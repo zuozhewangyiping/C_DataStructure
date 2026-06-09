@@ -24,28 +24,28 @@ typedef struct
 #define DS_HASHTABLE_MATCH_KEY(a, b) ((a).key == (b).key ? 1 : 0)
 
 // HASH宏用于哈希运算
-#define DS_HASHTABLE_HASH(e, table_capacity)                      \
-    ({                                                            \
-        unsigned int hash = 2166136261u;                          \
-        unsigned char *bytes = (unsigned char *)&((e).key);       \
-        for (int i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
-        {                                                         \
-            hash ^= bytes[i];                                     \
-            hash *= 16777619u;                                    \
-        }                                                         \
-        (int)(hash % (table_capacity));                           \
+#define DS_HASHTABLE_HASH(e, table_capacity)                         \
+    ({                                                               \
+        unsigned int hash = 2166136261u;                             \
+        unsigned char *bytes = (unsigned char *)&((e).key);          \
+        for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
+        {                                                            \
+            hash ^= bytes[i];                                        \
+            hash *= 16777619u;                                       \
+        }                                                            \
+        (int)(hash % (table_capacity));                              \
     })
 
-#define DS_HASHTABLE_HASH_KEY(key, table_capacity)                \
-    ({                                                            \
-        unsigned int hash = 2166136261u;                          \
-        unsigned char *bytes = (unsigned char *)&(key);           \
-        for (int i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
-        {                                                         \
-            hash ^= bytes[i];                                     \
-            hash *= 16777619u;                                    \
-        }                                                         \
-        (int)(hash % (table_capacity));                           \
+#define DS_HASHTABLE_HASH_KEY(key, table_capacity)                   \
+    ({                                                               \
+        unsigned int hash = 2166136261u;                             \
+        unsigned char *bytes = (unsigned char *)&(key);              \
+        for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
+        {                                                            \
+            hash ^= bytes[i];                                        \
+            hash *= 16777619u;                                       \
+        }                                                            \
+        (int)(hash % (table_capacity));                              \
     })
 
 #endif
