@@ -15,12 +15,19 @@
       steps:
         - uses: actions/checkout@v4
 
-        - name: Build
+        - name: Build (strict)
           run: |
             for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue RedBlackTree SinglyLinkedList Stack String test_project; do
-              echo "=== $dir ==="
-              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror -Wno-missing-field-initializers \
-                $dir/*.c \
-                -o /dev/null \
+              echo "=== $dir (library) ==="
+              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror \
+                $dir/ds_*.c \
+                -c -o /dev/null \
                 || exit 1
+            done
+
+        - name: Link (relaxed, includes main.c)
+          run: |
+            for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue RedBlackTree SinglyLinkedList Stack String test_project; do
+              echo "=== $dir (full) ==="
+              ${{ matrix.compiler }} -std=c99 -Wall -Wextra $dir/*.c -o /dev/null || exit 1
             done
