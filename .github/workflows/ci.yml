@@ -1,0 +1,26 @@
+﻿  name: CI
+
+  on:
+    push:
+    pull_request:
+
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+
+      strategy:
+        matrix:
+          compiler: [gcc, clang]
+
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Build
+          run: |
+            for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue RedBlackTree SinglyLinkedList Stack String test_project; do
+              echo "=== $dir ==="
+              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror \
+                $dir/*.c \
+                -o /dev/null \
+                || exit 1
+            done
