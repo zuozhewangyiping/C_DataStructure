@@ -19,10 +19,10 @@
           run: |
             for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue RedBlackTree SinglyLinkedList Stack String test_project; do
               echo "=== $dir (library) ==="
-              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror \
-                $dir/ds_*.c \
-                -c -o /dev/null \
-                || exit 1
+              for src in $dir/ds_*.c; do
+                [ -f "$src" ] || continue
+                ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror -c "$src" -o /dev/null || exit 1
+              done
             done
 
         - name: Link (relaxed, includes main.c)
