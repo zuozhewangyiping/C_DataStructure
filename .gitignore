@@ -1,0 +1,22 @@
+# Compiled binaries
+*.exe
+*.out
+*.o
+*.obj
+
+# Debug symbols
+*.pdb
+*.ilk
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
