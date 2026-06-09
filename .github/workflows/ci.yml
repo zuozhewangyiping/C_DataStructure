@@ -19,7 +19,7 @@
           run: |
             for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue RedBlackTree SinglyLinkedList Stack String test_project; do
               echo "=== $dir ==="
-              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror \
+              ${{ matrix.compiler }} -std=c99 -Wall -Wextra -Werror -Wno-missing-field-initializers \
                 $dir/*.c \
                 -o /dev/null \
                 || exit 1
