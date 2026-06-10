@@ -10,7 +10,7 @@ A learning-oriented yet fully functional C library that demonstrates how to desi
 
 ## Overview
 
-This library provides 11 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
+This library provides 12 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
 
 ### Why This Library Is Worth Studying
 
@@ -32,6 +32,7 @@ The result is a library that is clean enough to read and learn from, and solid e
 | **DynamicArray** | Generic resizable array (analogous to `std::vector` in C++) |
 | **Stack** | LIFO stack built on a dynamic array |
 | **Deque** | Double-ended queue using a circular buffer, O(1) push/pop at both ends |
+| **Queue** | FIFO queue using a circular buffer, O(1) enqueue/dequeue |
 | **String** | Character-oriented dynamic array with string-specific operations (compare, substring, concat, C-string conversion) |
 
 #### Node-Based (Linked Storage)
@@ -73,6 +74,7 @@ C_DataStructure_src/
 ├── RedBlackTree/                   # (same layout / 同上)
 ├── PriorityQueue/                  # two heaps: min + max / 两种堆：最小堆+最大堆
 ├── HashTable/                      # (same layout / 同上)
+├── Queue/                          # (same layout / 同上)
 ├── String/                         # (same layout / 同上)
 └── test_project/                   # Integration demo: DynamicArray + String / 组合示例
 ```
@@ -366,7 +368,7 @@ This project is provided as-is for educational and practical use. No specific li
 
 ## 概述
 
-本库提供 11 种基础数据结构，每种都自包含、互不依赖——你只需要引入实际使用的那些文件。零依赖，无构建系统，只有 `.c` 和 `.h`。
+本库提供 12 种基础数据结构，每种都自包含、互不依赖——你只需要引入实际使用的那些文件。零依赖，无构建系统，只有 `.c` 和 `.h`。
 
 ### 这个库为什么值得细读
 
@@ -388,6 +390,7 @@ C 语言没有模板、没有 RAII、没有析构函数。在 C 里写一个泛�
 | **DynamicArray** | 泛型动态数组（类比 C++ 的 `std::vector`） |
 | **Stack** | 基于动态数组的 LIFO 栈 |
 | **Deque** | 基于循环数组的双端队列，两端 O(1) 入队/出队 |
+| **Queue** | 基于循环数组的 FIFO 队列，O(1) 入队/出队 |
 | **String** | 面向字符的动态数组，提供字符串专属操作（比较、子串、拼接、C字符串互转） |
 
 #### 节点类（链式存储）
@@ -429,6 +432,7 @@ C_DataStructure_src/
 ├── RedBlackTree/                   # 同上
 ├── PriorityQueue/                  # 包含最小堆和最大堆两个独立实现
 ├── HashTable/                      # 同上布局
+├── Queue/                          # 同上布局
 ├── String/                         # 同上布局
 └── test_project/                   # 组合示例：DynamicArray + String
 ```

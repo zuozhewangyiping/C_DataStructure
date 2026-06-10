@@ -57,9 +57,9 @@ int ds_deque_peek_back(DS_Deque *dq, DS_DEQUE_TYPE **x);  /* return 1 if success
     // WARNING: 指针在下次 push / pop / reserve 后可能失效
 */
 
-int ds_deque_push_front(DS_Deque *dq, DS_DEQUE_TYPE value);        /* return 1 if success, 0 if realloc failed or dq NULL */
-int ds_deque_push_back(DS_Deque *dq, DS_DEQUE_TYPE value);         /* return 1 if success, 0 if realloc failed or dq NULL */
-int ds_deque_insert(DS_Deque *dq, int index, DS_DEQUE_TYPE value); /* return 1 if success, 0 if dq NULL, index out of range, or realloc failed */
+int ds_deque_push_front(DS_Deque *dq, DS_DEQUE_TYPE value);        /* return 1 if success, 0 if malloc failed or dq NULL */
+int ds_deque_push_back(DS_Deque *dq, DS_DEQUE_TYPE value);         /* return 1 if success, 0 if malloc failed or dq NULL */
+int ds_deque_insert(DS_Deque *dq, int index, DS_DEQUE_TYPE value); /* return 1 if success, 0 if dq NULL, index out of range, or malloc failed */
 /*
     ds_deque_push_XXX(dq, (DS_DEQUE_TYPE){100});
 */
@@ -97,8 +97,8 @@ DS_Deque *ds_deque_clone(const DS_Deque *dq, int *judge); /* return pointer if s
     }
 */
 
-int ds_deque_reserve(DS_Deque *dq, int new_capacity); /* return 1 if success, 0 if dq NULL, realloc failed, or new_capacity smaller than current size */
-int ds_deque_shrink_to_fit(DS_Deque *dq);             /* return 1 if success, 0 if dq NULL or realloc failed */
+int ds_deque_reserve(DS_Deque *dq, int new_capacity); /* return 1 if success, 0 if dq NULL, malloc failed, or new_capacity smaller than current size */
+int ds_deque_shrink_to_fit(DS_Deque *dq);             /* return 1 if success, 0 if dq NULL or malloc failed */
 /*
     ds_deque_reserve(dq, 100);   // 预留 100 个槽位，避免多次扩容
     ds_deque_shrink_to_fit(dq);  // 回收多余槽位，capacity 缩减至 size
