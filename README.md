@@ -423,21 +423,21 @@ The result is a library that is clean enough to read and learn from, and solid e
 ```
 C_DataStructure_src/
 ├── DynamicArray/
-│   ├── ds_dynamicarray.h          # Public API / 公共接口
-│   ├── ds_dynamicarray.c          # Implementation / 实现
-│   ├── ds_dynamicarray_type.h     # Element type configuration / 元素类型配置
-│   └── main.c                     # Usage demo / 使用示例
-├── Stack/                          # (same layout / 同上)
-├── Deque/                          # (same layout / 同上)
-├── SinglyLinkedList/               # (same layout / 同上)
-├── DoubleLinkedList/               # (same layout / 同上)
-├── AVLTree/                        # (same layout / 同上)
-├── RedBlackTree/                   # (same layout / 同上)
-├── PriorityQueue/                  # two heaps: min + max / 两种堆：最小堆+最大堆
-├── HashTable/                      # (same layout / 同上)
-├── Queue/                          # (same layout / 同上)
-├── String/                         # (same layout / 同上)
-└── test_project/                   # Integration demo: DynamicArray + String / 组合示例
+│   ├── ds_dynamicarray.h          # Public API
+│   ├── ds_dynamicarray.c          # Implementation
+│   ├── ds_dynamicarray_type.h     # Element type configuration
+│   └── main.c                     # Usage demo
+├── Stack/                          # (same layout)
+├── Deque/                          # (same layout)
+├── SinglyLinkedList/               # (same layout)
+├── DoubleLinkedList/               # (same layout)
+├── AVLTree/                        # (same layout)
+├── RedBlackTree/                   # (same layout)
+├── PriorityQueue/                  # two heaps: min + max
+├── HashTable/                      # (same layout)
+├── Queue/                          # (same layout)
+├── String/                         # (same layout)
+└── test_project/                   # Integration demo: DynamicArray + String
 ```
 
 ## Design
