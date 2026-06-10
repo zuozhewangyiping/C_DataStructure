@@ -1,366 +1,8 @@
-# C Data Structure Library / C语言数据结构库
-
-A learning-oriented yet fully functional C library that demonstrates how to design type-safe, generic data structures through compile-time macros. Every design decision — from the three-file extension model to deep-copy ownership — is intentional and worth studying.
+# C语言数据结构库 / C Data Structure Library
 
 一个面向学习但功能完备的C语言数据结构库，通过编译期宏展示如何设计类型安全的泛型容器。三文件扩展模型、深拷贝所有权、不透明指针API——每个设计决策都有意为之，值得细读。
 
----
-
-# English
-
-## Overview
-
-This library provides 12 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
-
-### Why This Library Is Worth Studying
-
-C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C forces you to answer questions that higher-level languages hide:
-
-- **How do you make a container type-safe without `void*`?** This library uses macros in a dedicated `_type.h` file — a compile-time code-generation pattern that is inspectable, debuggable, and requires no external tools.
-- **Who owns the data after insertion?** Every container deep-copies on insert. The container owns its copy; the caller keeps ownership of the original. This eliminates the "who frees what?" ambiguity that plagues `void*`-based C libraries.
-- **How do you hide implementation without sacrificing speed?** Opaque struct types expose only a forward declaration in the header. Users never see internal fields, yet all operations are direct function calls — no vtable overhead.
-- **How do you handle errors without exceptions?** Return-value conventions (1 for success, 0 for failure, -1 for NULL input) are applied uniformly across every function in every container.
-
-The result is a library that is clean enough to read and learn from, and solid enough to drop into a real project.
-
-### Data Structures
-
-#### Array-Based (Contiguous Storage)
-
-| Structure | Description |
-|---|---|
-| **DynamicArray** | Generic resizable array (analogous to `std::vector` in C++) |
-| **Stack** | LIFO stack built on a dynamic array |
-| **Deque** | Double-ended queue using a circular buffer, O(1) push/pop at both ends |
-| **Queue** | FIFO queue using a circular buffer, O(1) enqueue/dequeue |
-| **String** | Character-oriented dynamic array with string-specific operations (compare, substring, concat, C-string conversion) |
-
-#### Node-Based (Linked Storage)
-
-| Structure | Description |
-|---|---|
-| **SinglyLinkedList** | Singly linked list with index-based and cursor-based operations |
-| **DoubleLinkedList** | Doubly linked list with forward/backward traversal and cursor insertion/deletion |
-
-#### Tree-Based (Self-Balancing BST)
-
-| Structure | Description |
-|---|---|
-| **AVLTree** | AVL tree with LL/LR/RL/RR rotations, maintaining height per node |
-| **RedBlackTree** | Red-black tree with standard insert/delete fixup rules |
-
-#### Specialized
-
-| Structure | Description |
-|---|---|
-| **PriorityQueue (Min)** | Min-heap using a binary heap (array-based) |
-| **PriorityQueue (Max)** | Max-heap using a binary heap (array-based) |
-| **HashTable** | Hash table with separate chaining (singly linked buckets), FNV-1a hash |
-
-### Directory Structure
-
-```
-C_DataStructure_src/
-├── DynamicArray/
-│   ├── ds_dynamicarray.h          # Public API / 公共接口
-│   ├── ds_dynamicarray.c          # Implementation / 实现
-│   ├── ds_dynamicarray_type.h     # Element type configuration / 元素类型配置
-│   └── main.c                     # Usage demo / 使用示例
-├── Stack/                          # (same layout / 同上)
-├── Deque/                          # (same layout / 同上)
-├── SinglyLinkedList/               # (same layout / 同上)
-├── DoubleLinkedList/               # (same layout / 同上)
-├── AVLTree/                        # (same layout / 同上)
-├── RedBlackTree/                   # (same layout / 同上)
-├── PriorityQueue/                  # two heaps: min + max / 两种堆：最小堆+最大堆
-├── HashTable/                      # (same layout / 同上)
-├── Queue/                          # (same layout / 同上)
-├── String/                         # (same layout / 同上)
-└── test_project/                   # Integration demo: DynamicArray + String / 组合示例
-```
-
-## Design
-
-### Three-File Pattern
-
-Every data structure follows a consistent three-file layout:
-
-1. **`ds_<name>.h`** — Public header. Declares an opaque struct type and all API functions. Rich inline documentation with usage examples.
-
-2. **`ds_<name>.c`** — Implementation file. Defines the internal struct (hidden from users) and all function bodies. Internal helpers are `static`.
-
-3. **`ds_<name>_type.h`** — **Extension point for customization.** This is where you define:
-   - The element struct (`ds_<name>_type`)
-   - `DESTROY_ELEMENT` macro — frees heap resources inside an element
-   - `CLONE_ELEMENT` macro — deep-copies an element
-   - `MATCH` macro — equality predicate (for sequence containers)
-   - Comparison macros `_LT`, `_GT`, `_EQ`, `_LE`, `_GE` (for trees and heaps)
-   - `HASH` macro (for HashTable)
-
-Each `_type.h` includes a commented-out example showing how to modify the macros when your element contains heap-allocated fields like `char *name`.
-
-### Naming Convention
-
-All public symbols use the `ds_` prefix:
-
-```
-ds_<container>_<operation>
-```
-
-Examples: `ds_dynamicarray_push_back`, `ds_avltree_insert`, `ds_hashtable_find`
-
-### Opaque Types
-
-Internal struct details are hidden from users. You interact with containers only through function calls:
-
-```c
-typedef struct DS_DynamicArray DS_DynamicArray;  // forward declaration in .h
-struct DS_DynamicArray { ... };                  // definition in .c, invisible to user
-```
-
-## API Conventions
-
-### Return Values
-
-| Category | Returns |
-|---|---|
-| `create` / `clone` | Pointer on success, `NULL` on failure |
-| `destroy` | `void` (safe to pass `NULL`) |
-| Query (`size`, `capacity`, `is_empty`) | Non-negative on success, `-1` for `NULL` input |
-| Mutation (`push`, `insert`, `set`, `erase`...) | `1` on success, `0` on failure |
-| Element retrieval (`get`, `find`, `peek`, `pop`) | `1` on success, `0` on failure; element returned via output parameter |
-| Tree cursors (`search`, `find_min`, `successor`...) | Cursor pointer on success, `NULL` if not found / exhausted |
-
-### Output Parameter Pattern
-
-Functions that return elements use a **pointer-to-pointer** output parameter:
-
-```c
-DS_DYNAMICARRAY_TYPE *data;
-if (ds_dynamicarray_get(array, 0, &data)) {
-    printf("value = %d\n", data->value);
-    data->value = 999;  // can modify in place
-}
-```
-
-### Pop/Erase Variants
-
-Deletion operations come in two forms:
-
-- **Regular** — returns a pointer to the removed element. The caller must manually clean up heap resources inside the element, then `free()` the pointer (for node-based containers) or simply let it expire (for array-based containers).
-- **`_and_destroy`** — handles all cleanup internally. Use this when you don't need to inspect the removed element.
-
-```c
-// Manual cleanup
-DS_DYNAMICARRAY_TYPE *data;
-ds_dynamicarray_pop_back(array, &data);
-DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // free heap members inside data
-
-// Automatic cleanup
-ds_dynamicarray_pop_back_and_destroy(array);
-```
-
-### NULL Safety
-
-All public functions safely handle `NULL` container pointers by returning an error code (`0`, `-1`, or `NULL`).
-
-### Deep Copy Semantics
-
-All insert, set, and clone operations deep-copy elements via `CLONE_ELEMENT`. The container owns its copies; the caller retains ownership of the original data.
-
-## Quick Start
-
-### 1. Configure Your Element Type
-
-Edit the `_type.h` file for your chosen data structure. Define your element struct and the required macros:
-
-```c
-// ds_dynamicarray_type.h
-typedef struct {
-    int id;
-    char *name;       // heap-allocated field
-    double score;
-} ds_dynamicarray_type;
-
-#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  \
-    do { free((e).name); (e).name = NULL; } while (0)
-
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, judge)        \
-    ({                                                  \
-        char *name_copy = (e).name ? strdup((e).name) : NULL; \
-        if ((e).name && !name_copy) *(judge) = 0;      \
-        (ds_dynamicarray_type){.id = (e).id,            \
-                               .name = name_copy,       \
-                               .score = (e).score};     \
-    })
-
-#define DS_DYNAMICARRAY_MATCH_TYPE int
-#define DS_DYNAMICARRAY_MATCH(e, target) ((e).id == target ? 1 : 0)
-```
-
-### 2. Use the Data Structure
-
-```c
-#include "ds_dynamicarray.h"
-
-int main() {
-    DS_DynamicArray *arr = ds_dynamicarray_create();
-
-    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
-    ds_dynamicarray_push_back(arr, tmp1);
-    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // container has its own deep copy
-
-    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
-    ds_dynamicarray_push_back(arr, tmp2);
-    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
-
-    int size = ds_dynamicarray_size(arr);  // 2
-
-    ds_dynamicarray_destroy(arr);  // frees all elements and the container
-    return 0;
-}
-```
-
-> **IMPORTANT: Clean Up Your Own Copy**
->
-> The container deep-copies your data on insert / set / push. **You remain the owner**
-> of the original you passed in. If your element type has heap fields (like `char *name`
-> from `strdup`), you **must** call `DESTROY_ELEMENT` on your local copy after the
-> operation. Otherwise the heap memory you allocated leaks — the container does not
-> free it for you.
->
-> If your element type has only scalar fields (int, double, etc.), a compound literal
-> like `(type){10}` is harmless — nothing on the heap to clean up.
-
-### 3. Compile
-
-No build system required. Compile directly with any C compiler:
-
-```bash
-# Compile a single data structure with its demo
-gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c
-
-# Compile the integration test project
-gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test_project/main.c
-```
-
-All data structures are independent — compile only the `.c` files you need.
-
-## Advanced Features
-
-### Cursor-Based Iteration (Trees & Linked Lists)
-
-```c
-// In-order traversal of an AVL tree
-AVLTreeNode *cursor = ds_avltree_find_min(tree);
-while (cursor != NULL) {
-    DS_AVLTREE_TYPE *data;
-    ds_avltree_node_get_data(cursor, &data);
-    printf("key=%d\n", data->key);
-    cursor = ds_avltree_successor(tree, cursor);
-}
-```
-
-### Traversal Callbacks
-
-```c
-void print_value(DS_AVLTREE_TYPE *value, void *user_data) {
-    printf("key=%d, value=%d\n", value->key, value->value);
-}
-ds_avltree_traverse_inorder_value(tree, NULL, print_value);
-```
-
-### Range Queries (Trees)
-
-```c
-ds_avltree_range_query(tree,
-    (DS_AVLTREE_TYPE){.key = 30},
-    (DS_AVLTREE_TYPE){.key = 70},
-    NULL, visit_callback);
-```
-
-### Capacity Management (Array-Based)
-
-```c
-ds_dynamicarray_reserve(array, 1000);   // pre-allocate to avoid repeated reallocs
-ds_dynamicarray_shrink_to_fit(array);   // free excess capacity
-```
-
-### Insert vs Put (HashTable)
-
-```c
-ds_hashtable_insert(ht, value);  // fails if key already exists
-ds_hashtable_put(ht, value);     // overwrites if key exists, inserts otherwise
-```
-
-## Capacity Growth
-
-All array-based containers use a **doubling growth strategy**: initial capacity 0 → 1 on first insert → doubles thereafter. HashTable triggers rehashing when `size >= capacity` (load factor = 1.0).
-
-## Design Trade-offs
-
-- **No `void*` erasure** — generics via macros in `_type.h`. Compile-time type safety at the cost of recompilation when the element type changes.
-- **No error codes beyond return values** — no `errno`, `assert`, or `exit`. All errors reported through return values.
-- **Single-threaded** — no locking or atomic operations.
-- **No build system** — each data structure is a standalone set of `.c`/`.h` files.
-
-## Writing Portable CLONE / DESTROY Macros
-
-The default `CLONE_ELEMENT` in each `_type.h` uses a GNU statement expression `({...})` to embed clone logic directly in the macro body. This is concise but has two drawbacks: it does not compile under MSVC, and step-through debugging of macro-expanded code is difficult.
-
-A more portable alternative is to write a **`static inline` function** in `_type.h`, then have the macro delegate to it:
-
-```c
-// ds_dynamicarray_type.h
-
-typedef struct {
-    int id;
-    char *name;
-} ds_dynamicarray_type;
-
-// --- user-written clone / destroy functions ---
-
-static inline void destroy_element(ds_dynamicarray_type *e)
-{
-    free(e->name);
-    e->name = NULL;
-}
-
-static inline ds_dynamicarray_type
-clone_element(const ds_dynamicarray_type *src, int *judge)
-{
-    ds_dynamicarray_type copy = {.id = src->id, .name = NULL};
-    if (src->name) {
-        copy.name = strdup(src->name);
-        if (!copy.name) { *judge = 0; return copy; }
-    }
-    return copy;
-}
-
-// --- macros are now trivial wrappers ---
-
-#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  destroy_element(&(e))
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), (j))
-#define DS_DYNAMICARRAY_MATCH_TYPE          int
-#define DS_DYNAMICARRAY_MATCH(e, t)         ((e).id == (t) ? 1 : 0)
-```
-
-Key points:
-
-- **`static`** avoids duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
-- **`inline`** lets the compiler eliminate the call overhead — the generated code is identical to the macro version.
-- The macro **call syntax does not change**, so all `.c` / `.h` implementation files remain untouched. Users only edit `_type.h`.
-- This pattern works on **any C99 compiler** (GCC, Clang, MSVC).
-
-The choice between the two styles is purely a trade-off: the `({...})` macro keeps everything in one place; the `static inline` function adds a few lines but gains portability and debuggability. Both respect the core invariant of this library: **`_type.h` is the only file the user ever needs to modify.**
-
-## test_project
-
-The `test_project/` directory demonstrates composing two data structures: `DynamicArray` storing `String` elements to build a student grade system. It shows how to write `DESTROY_ELEMENT` / `CLONE_ELEMENT` macros that respect nested container lifecycles.
-
-## License
-
-This project is provided as-is for educational and practical use. No specific license is declared.
+A learning-oriented yet fully functional C library that demonstrates how to design type-safe, generic data structures through compile-time macros. Every design decision — from the three-file extension model to deep-copy ownership — is intentional and worth studying.
 
 ---
 
@@ -722,3 +364,362 @@ clone_element(const ds_dynamicarray_type *src, int *judge)
 ## 许可
 
 本项目按原样提供，用于教学和实用目的，未声明特定许可证。
+
+---
+
+# English
+
+## Overview
+
+This library provides 12 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
+
+### Why This Library Is Worth Studying
+
+C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C forces you to answer questions that higher-level languages hide:
+
+- **How do you make a container type-safe without `void*`?** This library uses macros in a dedicated `_type.h` file — a compile-time code-generation pattern that is inspectable, debuggable, and requires no external tools.
+- **Who owns the data after insertion?** Every container deep-copies on insert. The container owns its copy; the caller keeps ownership of the original. This eliminates the "who frees what?" ambiguity that plagues `void*`-based C libraries.
+- **How do you hide implementation without sacrificing speed?** Opaque struct types expose only a forward declaration in the header. Users never see internal fields, yet all operations are direct function calls — no vtable overhead.
+- **How do you handle errors without exceptions?** Return-value conventions (1 for success, 0 for failure, -1 for NULL input) are applied uniformly across every function in every container.
+
+The result is a library that is clean enough to read and learn from, and solid enough to drop into a real project.
+
+### Data Structures
+
+#### Array-Based (Contiguous Storage)
+
+| Structure | Description |
+|---|---|
+| **DynamicArray** | Generic resizable array (analogous to `std::vector` in C++) |
+| **Stack** | LIFO stack built on a dynamic array |
+| **Deque** | Double-ended queue using a circular buffer, O(1) push/pop at both ends |
+| **Queue** | FIFO queue using a circular buffer, O(1) enqueue/dequeue |
+| **String** | Character-oriented dynamic array with string-specific operations (compare, substring, concat, C-string conversion) |
+
+#### Node-Based (Linked Storage)
+
+| Structure | Description |
+|---|---|
+| **SinglyLinkedList** | Singly linked list with index-based and cursor-based operations |
+| **DoubleLinkedList** | Doubly linked list with forward/backward traversal and cursor insertion/deletion |
+
+#### Tree-Based (Self-Balancing BST)
+
+| Structure | Description |
+|---|---|
+| **AVLTree** | AVL tree with LL/LR/RL/RR rotations, maintaining height per node |
+| **RedBlackTree** | Red-black tree with standard insert/delete fixup rules |
+
+#### Specialized
+
+| Structure | Description |
+|---|---|
+| **PriorityQueue (Min)** | Min-heap using a binary heap (array-based) |
+| **PriorityQueue (Max)** | Max-heap using a binary heap (array-based) |
+| **HashTable** | Hash table with separate chaining (singly linked buckets), FNV-1a hash |
+
+### Directory Structure
+
+```
+C_DataStructure_src/
+├── DynamicArray/
+│   ├── ds_dynamicarray.h          # Public API / 公共接口
+│   ├── ds_dynamicarray.c          # Implementation / 实现
+│   ├── ds_dynamicarray_type.h     # Element type configuration / 元素类型配置
+│   └── main.c                     # Usage demo / 使用示例
+├── Stack/                          # (same layout / 同上)
+├── Deque/                          # (same layout / 同上)
+├── SinglyLinkedList/               # (same layout / 同上)
+├── DoubleLinkedList/               # (same layout / 同上)
+├── AVLTree/                        # (same layout / 同上)
+├── RedBlackTree/                   # (same layout / 同上)
+├── PriorityQueue/                  # two heaps: min + max / 两种堆：最小堆+最大堆
+├── HashTable/                      # (same layout / 同上)
+├── Queue/                          # (same layout / 同上)
+├── String/                         # (same layout / 同上)
+└── test_project/                   # Integration demo: DynamicArray + String / 组合示例
+```
+
+## Design
+
+### Three-File Pattern
+
+Every data structure follows a consistent three-file layout:
+
+1. **`ds_<name>.h`** — Public header. Declares an opaque struct type and all API functions. Rich inline documentation with usage examples.
+
+2. **`ds_<name>.c`** — Implementation file. Defines the internal struct (hidden from users) and all function bodies. Internal helpers are `static`.
+
+3. **`ds_<name>_type.h`** — **Extension point for customization.** This is where you define:
+   - The element struct (`ds_<name>_type`)
+   - `DESTROY_ELEMENT` macro — frees heap resources inside an element
+   - `CLONE_ELEMENT` macro — deep-copies an element
+   - `MATCH` macro — equality predicate (for sequence containers)
+   - Comparison macros `_LT`, `_GT`, `_EQ`, `_LE`, `_GE` (for trees and heaps)
+   - `HASH` macro (for HashTable)
+
+Each `_type.h` includes a commented-out example showing how to modify the macros when your element contains heap-allocated fields like `char *name`.
+
+### Naming Convention
+
+All public symbols use the `ds_` prefix:
+
+```
+ds_<container>_<operation>
+```
+
+Examples: `ds_dynamicarray_push_back`, `ds_avltree_insert`, `ds_hashtable_find`
+
+### Opaque Types
+
+Internal struct details are hidden from users. You interact with containers only through function calls:
+
+```c
+typedef struct DS_DynamicArray DS_DynamicArray;  // forward declaration in .h
+struct DS_DynamicArray { ... };                  // definition in .c, invisible to user
+```
+
+## API Conventions
+
+### Return Values
+
+| Category | Returns |
+|---|---|
+| `create` / `clone` | Pointer on success, `NULL` on failure |
+| `destroy` | `void` (safe to pass `NULL`) |
+| Query (`size`, `capacity`, `is_empty`) | Non-negative on success, `-1` for `NULL` input |
+| Mutation (`push`, `insert`, `set`, `erase`...) | `1` on success, `0` on failure |
+| Element retrieval (`get`, `find`, `peek`, `pop`) | `1` on success, `0` on failure; element returned via output parameter |
+| Tree cursors (`search`, `find_min`, `successor`...) | Cursor pointer on success, `NULL` if not found / exhausted |
+
+### Output Parameter Pattern
+
+Functions that return elements use a **pointer-to-pointer** output parameter:
+
+```c
+DS_DYNAMICARRAY_TYPE *data;
+if (ds_dynamicarray_get(array, 0, &data)) {
+    printf("value = %d\n", data->value);
+    data->value = 999;  // can modify in place
+}
+```
+
+### Pop/Erase Variants
+
+Deletion operations come in two forms:
+
+- **Regular** — returns a pointer to the removed element. The caller must manually clean up heap resources inside the element, then `free()` the pointer (for node-based containers) or simply let it expire (for array-based containers).
+- **`_and_destroy`** — handles all cleanup internally. Use this when you don't need to inspect the removed element.
+
+```c
+// Manual cleanup
+DS_DYNAMICARRAY_TYPE *data;
+ds_dynamicarray_pop_back(array, &data);
+DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // free heap members inside data
+
+// Automatic cleanup
+ds_dynamicarray_pop_back_and_destroy(array);
+```
+
+### NULL Safety
+
+All public functions safely handle `NULL` container pointers by returning an error code (`0`, `-1`, or `NULL`).
+
+### Deep Copy Semantics
+
+All insert, set, and clone operations deep-copy elements via `CLONE_ELEMENT`. The container owns its copies; the caller retains ownership of the original data.
+
+## Quick Start
+
+### 1. Configure Your Element Type
+
+Edit the `_type.h` file for your chosen data structure. Define your element struct and the required macros:
+
+```c
+// ds_dynamicarray_type.h
+typedef struct {
+    int id;
+    char *name;       // heap-allocated field
+    double score;
+} ds_dynamicarray_type;
+
+#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  \
+    do { free((e).name); (e).name = NULL; } while (0)
+
+#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, judge)        \
+    ({                                                  \
+        char *name_copy = (e).name ? strdup((e).name) : NULL; \
+        if ((e).name && !name_copy) *(judge) = 0;      \
+        (ds_dynamicarray_type){.id = (e).id,            \
+                               .name = name_copy,       \
+                               .score = (e).score};     \
+    })
+
+#define DS_DYNAMICARRAY_MATCH_TYPE int
+#define DS_DYNAMICARRAY_MATCH(e, target) ((e).id == target ? 1 : 0)
+```
+
+### 2. Use the Data Structure
+
+```c
+#include "ds_dynamicarray.h"
+
+int main() {
+    DS_DynamicArray *arr = ds_dynamicarray_create();
+
+    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
+    ds_dynamicarray_push_back(arr, tmp1);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // container has its own deep copy
+
+    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
+    ds_dynamicarray_push_back(arr, tmp2);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
+
+    int size = ds_dynamicarray_size(arr);  // 2
+
+    ds_dynamicarray_destroy(arr);  // frees all elements and the container
+    return 0;
+}
+```
+
+> **IMPORTANT: Clean Up Your Own Copy**
+>
+> The container deep-copies your data on insert / set / push. **You remain the owner**
+> of the original you passed in. If your element type has heap fields (like `char *name`
+> from `strdup`), you **must** call `DESTROY_ELEMENT` on your local copy after the
+> operation. Otherwise the heap memory you allocated leaks — the container does not
+> free it for you.
+>
+> If your element type has only scalar fields (int, double, etc.), a compound literal
+> like `(type){10}` is harmless — nothing on the heap to clean up.
+
+### 3. Compile
+
+No build system required. Compile directly with any C compiler:
+
+```bash
+# Compile a single data structure with its demo
+gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c
+
+# Compile the integration test project
+gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test_project/main.c
+```
+
+All data structures are independent — compile only the `.c` files you need.
+
+## Advanced Features
+
+### Cursor-Based Iteration (Trees & Linked Lists)
+
+```c
+// In-order traversal of an AVL tree
+AVLTreeNode *cursor = ds_avltree_find_min(tree);
+while (cursor != NULL) {
+    DS_AVLTREE_TYPE *data;
+    ds_avltree_node_get_data(cursor, &data);
+    printf("key=%d\n", data->key);
+    cursor = ds_avltree_successor(tree, cursor);
+}
+```
+
+### Traversal Callbacks
+
+```c
+void print_value(DS_AVLTREE_TYPE *value, void *user_data) {
+    printf("key=%d, value=%d\n", value->key, value->value);
+}
+ds_avltree_traverse_inorder_value(tree, NULL, print_value);
+```
+
+### Range Queries (Trees)
+
+```c
+ds_avltree_range_query(tree,
+    (DS_AVLTREE_TYPE){.key = 30},
+    (DS_AVLTREE_TYPE){.key = 70},
+    NULL, visit_callback);
+```
+
+### Capacity Management (Array-Based)
+
+```c
+ds_dynamicarray_reserve(array, 1000);   // pre-allocate to avoid repeated reallocs
+ds_dynamicarray_shrink_to_fit(array);   // free excess capacity
+```
+
+### Insert vs Put (HashTable)
+
+```c
+ds_hashtable_insert(ht, value);  // fails if key already exists
+ds_hashtable_put(ht, value);     // overwrites if key exists, inserts otherwise
+```
+
+## Capacity Growth
+
+All array-based containers use a **doubling growth strategy**: initial capacity 0 → 1 on first insert → doubles thereafter. HashTable triggers rehashing when `size >= capacity` (load factor = 1.0).
+
+## Design Trade-offs
+
+- **No `void*` erasure** — generics via macros in `_type.h`. Compile-time type safety at the cost of recompilation when the element type changes.
+- **No error codes beyond return values** — no `errno`, `assert`, or `exit`. All errors reported through return values.
+- **Single-threaded** — no locking or atomic operations.
+- **No build system** — each data structure is a standalone set of `.c`/`.h` files.
+
+## Writing Portable CLONE / DESTROY Macros
+
+The default `CLONE_ELEMENT` in each `_type.h` uses a GNU statement expression `({...})` to embed clone logic directly in the macro body. This is concise but has two drawbacks: it does not compile under MSVC, and step-through debugging of macro-expanded code is difficult.
+
+A more portable alternative is to write a **`static inline` function** in `_type.h`, then have the macro delegate to it:
+
+```c
+// ds_dynamicarray_type.h
+
+typedef struct {
+    int id;
+    char *name;
+} ds_dynamicarray_type;
+
+// --- user-written clone / destroy functions ---
+
+static inline void destroy_element(ds_dynamicarray_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+
+static inline ds_dynamicarray_type
+clone_element(const ds_dynamicarray_type *src, int *judge)
+{
+    ds_dynamicarray_type copy = {.id = src->id, .name = NULL};
+    if (src->name) {
+        copy.name = strdup(src->name);
+        if (!copy.name) { *judge = 0; return copy; }
+    }
+    return copy;
+}
+
+// --- macros are now trivial wrappers ---
+
+#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  destroy_element(&(e))
+#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), (j))
+#define DS_DYNAMICARRAY_MATCH_TYPE          int
+#define DS_DYNAMICARRAY_MATCH(e, t)         ((e).id == (t) ? 1 : 0)
+```
+
+Key points:
+
+- **`static`** avoids duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
+- **`inline`** lets the compiler eliminate the call overhead — the generated code is identical to the macro version.
+- The macro **call syntax does not change**, so all `.c` / `.h` implementation files remain untouched. Users only edit `_type.h`.
+- This pattern works on **any C99 compiler** (GCC, Clang, MSVC).
+
+The choice between the two styles is purely a trade-off: the `({...})` macro keeps everything in one place; the `static inline` function adds a few lines but gains portability and debuggability. Both respect the core invariant of this library: **`_type.h` is the only file the user ever needs to modify.**
+
+## test_project
+
+The `test_project/` directory demonstrates composing two data structures: `DynamicArray` storing `String` elements to build a student grade system. It shows how to write `DESTROY_ELEMENT` / `CLONE_ELEMENT` macros that respect nested container lifecycles.
+
+## License
+
+This project is provided as-is for educational and practical use. No specific license is declared.
+
