@@ -195,8 +195,13 @@ typedef struct {
 int main() {
     DS_DynamicArray *arr = ds_dynamicarray_create();
 
-    ds_dynamicarray_push_back(arr, (DS_DYNAMICARRAY_TYPE){1, strdup("Alice"), 95.5});
-    ds_dynamicarray_push_back(arr, (DS_DYNAMICARRAY_TYPE){2, strdup("Bob"),   87.0});
+    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
+    ds_dynamicarray_push_back(arr, tmp1);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // container has its own deep copy
+
+    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
+    ds_dynamicarray_push_back(arr, tmp2);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
 
     int size = ds_dynamicarray_size(arr);  // 2
 
@@ -204,6 +209,17 @@ int main() {
     return 0;
 }
 ```
+
+> **IMPORTANT: Clean Up Your Own Copy**
+>
+> The container deep-copies your data on insert / set / push. **You remain the owner**
+> of the original you passed in. If your element type has heap fields (like `char *name`
+> from `strdup`), you **must** call `DESTROY_ELEMENT` on your local copy after the
+> operation. Otherwise the heap memory you allocated leaks — the container does not
+> free it for you.
+>
+> If your element type has only scalar fields (int, double, etc.), a compound literal
+> like `(type){10}` is harmless — nothing on the heap to clean up.
 
 ### 3. Compile
 
@@ -526,8 +542,13 @@ typedef struct {
 int main() {
     DS_DynamicArray *arr = ds_dynamicarray_create();
 
-    ds_dynamicarray_push_back(arr, (DS_DYNAMICARRAY_TYPE){1, strdup("Alice"), 95.5});
-    ds_dynamicarray_push_back(arr, (DS_DYNAMICARRAY_TYPE){2, strdup("Bob"),   87.0});
+    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
+    ds_dynamicarray_push_back(arr, tmp1);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // 容器已有深拷贝，释放自己这份
+
+    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
+    ds_dynamicarray_push_back(arr, tmp2);
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
 
     int size = ds_dynamicarray_size(arr);  // 2
 
@@ -535,6 +556,16 @@ int main() {
     return 0;
 }
 ```
+
+> **重要：清理你自己手上的那份数据**
+>
+> 容器在 insert / set / push 时会深拷贝你的数据。**你自己传入的那份数据仍然属于你。**
+> 如果你的元素类型含堆字段（如 `strdup` 产生的 `char *name`），操作完成后**必须**
+> 调用 `DESTROY_ELEMENT` 清理自己手上的副本。否则你分配的堆内存无人释放——容器不
+> 会替你 `free`。
+>
+> 如果你的元素类型只有标量字段（int、double 等），像 `(type){10}` 这样直接传入即
+> 可——不存在堆资源，无需手动清理。
 
 ### 3. 编译
 
