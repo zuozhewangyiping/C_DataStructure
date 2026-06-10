@@ -2,110 +2,96 @@
 #include <stdlib.h>
 #include "ds_singlylinkedlist.h"
 
-/* 遍历回调：打印每个元素 */
-static void print_element(DS_SINGLYLINKEDLIST_TYPE *value, void *user_data)
+static void print_entry(DS_SINGLYLINKEDLIST_TYPE *v, void *ud)
 {
-    (void)user_data;
-    printf("  key=%d, value=%d\n", value->key, value->value);
+    (void)ud;
+    printf("  [%d]=%d\n", v->key, v->value);
 }
 
-/* 遍历回调：每个元素的 value 加上回调传入的数值 */
-static void add_value(DS_SINGLYLINKEDLIST_TYPE *value, void *user_data)
-{
-    value->value += *(int *)user_data;
-}
-
-/* 辅助：打印链表全部内容及大小 */
-static void print_list(DS_SinglyLinkedList *sl)
-{
-    int sz = ds_singlylinkedlist_size(sl);
-    printf("size=%d\n", sz);
-    if (sz > 0) {
-        ds_singlylinkedlist_traverse(sl, NULL, print_element);
-    }
-    printf("\n");
-}
+static void add_ten(DS_SINGLYLINKEDLIST_TYPE *v, void *ud) { (void)ud; v->value += 10; }
 
 int main(void)
 {
-    /* ---- 创建链表 ---- */
     DS_SinglyLinkedList *sl = ds_singlylinkedlist_create();
-    printf("empty? %d\n\n", ds_singlylinkedlist_is_empty(sl));
 
-    /* ---- push_back / push_front ---- */
-    ds_singlylinkedlist_push_back(sl,  (DS_SINGLYLINKEDLIST_TYPE){1, 100});
-    ds_singlylinkedlist_push_back(sl,  (DS_SINGLYLINKEDLIST_TYPE){2, 200});
+    printf("is_empty: %d, size: %d\n", ds_singlylinkedlist_is_empty(sl), ds_singlylinkedlist_size(sl));
+
+    ds_singlylinkedlist_push_back(sl, (DS_SINGLYLINKEDLIST_TYPE){1, 100});
     ds_singlylinkedlist_push_front(sl, (DS_SINGLYLINKEDLIST_TYPE){0, 0});
-    printf("after push:\n");
-    print_list(sl);    /* 预期: {0,0}, {1,100}, {2,200} */
-
-    /* ---- insert ---- */
     ds_singlylinkedlist_insert(sl, 1, (DS_SINGLYLINKEDLIST_TYPE){99, 999});
-    printf("after insert at index 1:\n");
-    print_list(sl);    /* 预期: {0,0}, {99,999}, {1,100}, {2,200} */
+    printf("after push/insert: size=%d\n", ds_singlylinkedlist_size(sl));
 
-    /* ---- get（拿到内部指针，可直接修改） ---- */
     DS_SINGLYLINKEDLIST_TYPE *p;
-    if (ds_singlylinkedlist_get(sl, 2, &p)) {
-        p->key = 777;
-        printf("after get+modify index 2:\n");
-        print_list(sl);    /* {1,100} 变为 {777,100} */
-    }
+    ds_singlylinkedlist_get(sl, 1, &p);
+    printf("get[1]: key=%d, value=%d\n", p->key, p->value);
 
-    /* ---- set（深拷贝替换） ---- */
     ds_singlylinkedlist_set(sl, 0, (DS_SINGLYLINKEDLIST_TYPE){-1, -100});
-    printf("after set index 0:\n");
-    print_list(sl);
 
-    /* ---- find ---- */
-    if (ds_singlylinkedlist_find(sl, 777, &p)) {
-        printf("found key=777, value=%d\n\n", p->value);
-    }
+    ds_singlylinkedlist_find(sl, 1, &p);
+    printf("find(1): key=%d, value=%d\n", p->key, p->value);
 
-    /* ---- traverse 批量修改 ---- */
+    SinglyLinkedListNode *cur = ds_singlylinkedlist_search(sl, 99);
+    ds_singlylinkedlist_node_get_data(cur, &p);
+    printf("search(99): key=%d, value=%d\n", p->key, p->value);
+
+    printf("traverse:\n");
+    ds_singlylinkedlist_traverse(sl, NULL, print_entry);
+
     int delta = 10;
-    ds_singlylinkedlist_traverse(sl, &delta, add_value);
-    printf("after traverse add 10 to all values:\n");
-    print_list(sl);
+    ds_singlylinkedlist_traverse(sl, &delta, add_ten);
+    printf("after traverse(add 10):\n");
+    ds_singlylinkedlist_traverse(sl, NULL, print_entry);
 
-    /* ---- pop_front / pop_back ---- */
-    DS_SINGLYLINKEDLIST_TYPE *popped;
-    ds_singlylinkedlist_pop_front(sl, &popped);
-    printf("pop front: key=%d, value=%d, then free it\n", popped->key, popped->value);
-    free(popped);
+    cur = ds_singlylinkedlist_begin(sl);
+    printf("begin->key=%d\n", (ds_singlylinkedlist_node_get_data(cur, &p), p->key));
 
-    ds_singlylinkedlist_pop_back(sl, &popped);
-    printf("pop back : key=%d, value=%d, then free it\n", popped->key, popped->value);
-    free(popped);
-    printf("after pops:\n");
-    print_list(sl);
+    ds_singlylinkedlist_insert_after_cursor(cur, (DS_SINGLYLINKEDLIST_TYPE){50, 500});
+    cur = ds_singlylinkedlist_next(cur);
+    ds_singlylinkedlist_node_get_data(cur, &p);
+    printf("after insert_after_cursor: key=%d\n", p->key);
 
-    /* ---- erase ---- */
-    ds_singlylinkedlist_erase(sl, 0, &popped);
-    printf("erase index 0: key=%d, value=%d, free it\n", popped->key, popped->value);
-    free(popped);
-    printf("after erase:\n");
-    print_list(sl);
+    ds_singlylinkedlist_erase_after_cursor_and_destroy(cur);
+    printf("after erase_after_cursor_and_destroy\n");
 
-    /* ---- clone ---- */
-    int judge;
-    DS_SinglyLinkedList *copy = ds_singlylinkedlist_clone(sl, &judge);
-    printf("clone (judge=%d):\n", judge);
-    print_list(copy);
+    ds_singlylinkedlist_erase_after_cursor(ds_singlylinkedlist_begin(sl), &p);
+    printf("erase_after_cursor: key=%d, value=%d\n", p->key, p->value);
+    DS_SINGLYLINKEDLIST_DESTROY_ELEMENT(*p);
+    free(p);
 
-    /* ---- concat ---- */
-    ds_singlylinkedlist_concat(sl, copy);
-    printf("after concat (copy -> sl), copy is now empty:\n");
-    printf("sl:  "); print_list(sl);
-    printf("copy: "); print_list(copy);
+    ds_singlylinkedlist_pop_front(sl, &p);
+    printf("pop_front: key=%d, value=%d\n", p->key, p->value);
+    DS_SINGLYLINKEDLIST_DESTROY_ELEMENT(*p);
+    free(p);
 
-    /* ---- _and_destroy 版本（无需手动 free） ---- */
+    ds_singlylinkedlist_pop_back(sl, &p);
+    printf("pop_back: key=%d, value=%d\n", p->key, p->value);
+    DS_SINGLYLINKEDLIST_DESTROY_ELEMENT(*p);
+    free(p);
+
+    ds_singlylinkedlist_erase(sl, 0, &p);
+    printf("erase[0]: key=%d, value=%d\n", p->key, p->value);
+    DS_SINGLYLINKEDLIST_DESTROY_ELEMENT(*p);
+    free(p);
+
+    ds_singlylinkedlist_push_back(sl, (DS_SINGLYLINKEDLIST_TYPE){7, 700});
     ds_singlylinkedlist_pop_front_and_destroy(sl);
-    printf("after pop_front_and_destroy:\n");
-    print_list(sl);
+    ds_singlylinkedlist_push_back(sl, (DS_SINGLYLINKEDLIST_TYPE){8, 800});
+    ds_singlylinkedlist_pop_back_and_destroy(sl);
+    ds_singlylinkedlist_push_back(sl, (DS_SINGLYLINKEDLIST_TYPE){9, 900});
+    ds_singlylinkedlist_erase_and_destroy(sl, 0);
 
-    /* ---- 清理 ---- */
+    int judge;
+    DS_SinglyLinkedList *clone = ds_singlylinkedlist_clone(sl, &judge);
+    printf("clone: size=%d\n", ds_singlylinkedlist_size(clone));
+
+    DS_SinglyLinkedList *sl2 = ds_singlylinkedlist_create();
+    ds_singlylinkedlist_push_back(sl2, (DS_SINGLYLINKEDLIST_TYPE){100, 1000});
+    ds_singlylinkedlist_concat(sl, sl2);
+    printf("after concat: sl size=%d, sl2 is_empty=%d\n",
+           ds_singlylinkedlist_size(sl), ds_singlylinkedlist_is_empty(sl2));
+
     ds_singlylinkedlist_destroy(sl);
-    ds_singlylinkedlist_destroy(copy);
+    ds_singlylinkedlist_destroy(sl2);
+    ds_singlylinkedlist_destroy(clone);
     return 0;
 }
