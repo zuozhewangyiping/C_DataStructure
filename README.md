@@ -1,8 +1,8 @@
 # C Data Structure Library / C语言数据结构库
 
-A collection of generic data structures implemented in C, designed for clarity, consistency, and ease of customization.
+A learning-oriented yet fully functional C library that demonstrates how to design type-safe, generic data structures through compile-time macros. Every design decision — from the three-file extension model to deep-copy ownership — is intentional and worth studying.
 
-一套用C语言实现的泛型数据结构库，追求清晰、一致、易于定制。
+一个面向学习但功能完备的C语言数据结构库，通过编译期宏展示如何设计类型安全的泛型容器。三文件扩展模型、深拷贝所有权、不透明指针API——每个设计决策都有意为之，值得细读。
 
 ---
 
@@ -10,9 +10,18 @@ A collection of generic data structures implemented in C, designed for clarity, 
 
 ## Overview
 
-This library provides 11 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use.
+This library provides 11 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
 
-All containers support **generic element types** through compile-time macros. Elements are deep-copied on insertion, giving each container full ownership of its data.
+### Why This Library Is Worth Studying
+
+C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C forces you to answer questions that higher-level languages hide:
+
+- **How do you make a container type-safe without `void*`?** This library uses macros in a dedicated `_type.h` file — a compile-time code-generation pattern that is inspectable, debuggable, and requires no external tools.
+- **Who owns the data after insertion?** Every container deep-copies on insert. The container owns its copy; the caller keeps ownership of the original. This eliminates the "who frees what?" ambiguity that plagues `void*`-based C libraries.
+- **How do you hide implementation without sacrificing speed?** Opaque struct types expose only a forward declaration in the header. Users never see internal fields, yet all operations are direct function calls — no vtable overhead.
+- **How do you handle errors without exceptions?** Return-value conventions (1 for success, 0 for failure, -1 for NULL input) are applied uniformly across every function in every container.
+
+The result is a library that is clean enough to read and learn from, and solid enough to drop into a real project.
 
 ### Data Structures
 
@@ -357,9 +366,18 @@ This project is provided as-is for educational and practical use. No specific li
 
 ## 概述
 
-本库提供 11 种基础数据结构，每种都自包含、互不依赖——你只需要引入实际使用的那些文件。
+本库提供 11 种基础数据结构，每种都自包含、互不依赖——你只需要引入实际使用的那些文件。零依赖，无构建系统，只有 `.c` 和 `.h`。
 
-所有容器通过编译期宏支持**泛型元素类型**。元素在插入时执行深拷贝，容器完全拥有其数据的所有权。
+### 这个库为什么值得细读
+
+C 语言没有模板、没有 RAII、没有析构函数。在 C 里写一个泛型且内存安全的容器，你必须正面回答那些高级语言替你掩盖的问题：
+
+- **不用 `void*`，怎么让容器类型安全？** 本库用宏在专用的 `_type.h` 文件中实现编译期代码生成——可审查、可调试、不需要外部工具。
+- **插入数据之后，谁拥有它？** 每个容器都在插入时深拷贝。容器拥有副本，调用者保留原数据的所有权。这消灭了 `void*` 方案中"谁负责释放"的灰色地带。
+- **怎么隐藏实现细节，又不牺牲性能？** 不透明结构体在头文件中只放一个前向声明。用户永远看不到内部字段，但所有操作都是直接函数调用——没有虚表开销。
+- **没有异常，怎么统一报错？** 返回值约定（成功 1、失败 0、NULL 输入 -1）贯穿所有容器、所有函数，没有例外。
+
+结果是：一个简洁到能通读学习的库，同时也扎实到能投入真实项目。
 
 ### 数据结构一览
 
