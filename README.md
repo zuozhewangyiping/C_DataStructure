@@ -14,12 +14,14 @@ A learning-oriented yet fully functional C library that demonstrates how to desi
 
 ### 这个库为什么值得细读
 
-C 语言没有模板、没有 RAII、没有析构函数。在 C 里写一个泛型且内存安全的容器，你必须正面回答那些高级语言替你掩盖的问题：
+C 语言没有模板、没有 RAII、没有析构函数。在 C 里写一个泛型且内存安全的容器，必须正面处理那些高级语言替你掩盖了的设计问题。
 
-- **不用 `void*`，怎么让容器类型安全？** 本库用宏在专用的 `_type.h` 文件中实现编译期代码生成——可审查、可调试、不需要外部工具。
-- **插入数据之后，谁拥有它？** 每个容器都在插入时深拷贝。容器拥有副本，调用者保留原数据的所有权。这消灭了 `void*` 方案中"谁负责释放"的灰色地带。
-- **怎么隐藏实现细节，又不牺牲性能？** 不透明结构体在头文件中只放一个前向声明。用户永远看不到内部字段，但所有操作都是直接函数调用——没有虚表开销。
-- **没有异常，怎么统一报错？** 返回值约定（成功 1、失败 0、NULL 输入 -1）贯穿所有容器、所有函数，没有例外。
+本库的核心设计决策：
+
+- **泛型通过编译期宏实现，而非 `void*`。** 专用的 `_type.h` 文件集中管理元素类型和操作——可审查、可调试、不依赖外部工具。
+- **所有插入操作执行深拷贝，容器全权拥有其数据。** 调用者保留原数据的所有权，消除了 `void*` 方案中"谁来释放"的灰色地带。
+- **不透明结构体隐藏实现细节。** 头文件中仅暴露前向声明，用户无法访问内部字段。所有操作均为直接函数调用，无虚表、无运行时开销。
+- **统一的返回值约定处理所有错误。** 成功 1、失败 0、NULL 入参 -1——贯穿所有容器、所有函数，无例外。
 
 结果是：一个简洁到能通读学习的库，同时也扎实到能投入真实项目。
 
@@ -375,12 +377,14 @@ This library provides 12 fundamental data structures, each self-contained and in
 
 ### Why This Library Is Worth Studying
 
-C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C forces you to answer questions that higher-level languages hide:
+C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C means confronting the design questions that higher-level languages handle for you.
 
-- **How do you make a container type-safe without `void*`?** This library uses macros in a dedicated `_type.h` file — a compile-time code-generation pattern that is inspectable, debuggable, and requires no external tools.
-- **Who owns the data after insertion?** Every container deep-copies on insert. The container owns its copy; the caller keeps ownership of the original. This eliminates the "who frees what?" ambiguity that plagues `void*`-based C libraries.
-- **How do you hide implementation without sacrificing speed?** Opaque struct types expose only a forward declaration in the header. Users never see internal fields, yet all operations are direct function calls — no vtable overhead.
-- **How do you handle errors without exceptions?** Return-value conventions (1 for success, 0 for failure, -1 for NULL input) are applied uniformly across every function in every container.
+This library's core design decisions:
+
+- **Generics via compile-time macros, not `void*`.** A dedicated `_type.h` file centralizes element type definitions and operations — inspectable, debuggable, and free of external tooling dependencies.
+- **Deep copy on every insert; the container owns its data.** The caller retains ownership of what they passed in. No ambiguity about who frees what — a perennial source of bugs in `void*`-based C libraries.
+- **Opaque structs hide implementation.** Headers expose only a forward declaration. Internal fields are invisible to the user, yet every operation is a direct function call — no vtable, no runtime overhead.
+- **Uniform return-value conventions for error handling.** 1 for success, 0 for failure, -1 for NULL input — applied consistently across every function in every container. No exceptions, no errno.
 
 The result is a library that is clean enough to read and learn from, and solid enough to drop into a real project.
 
