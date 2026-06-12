@@ -1,8 +1,8 @@
 # C语言数据结构库 / C Data Structure Library
 
-一个面向学习但功能完备的C语言数据结构库，通过编译期宏展示如何设计类型安全的泛型容器。三文件扩展模型、深拷贝所有权、不透明指针API——每个设计决策都有意为之，值得细读。
+一个面向学习但功能完备的C语言数据结构库，通过编译期宏展示如何设计类型安全的泛型容器，涵盖三文件扩展模型、深拷贝所有权、不透明指针API等设计要点。
 
-A learning-oriented yet fully functional C library that demonstrates how to design type-safe, generic data structures through compile-time macros. Every design decision — from the three-file extension model to deep-copy ownership — is intentional and worth studying.
+A learning-oriented yet fully functional C library that demonstrates type-safe, generic data structure design in C — from compile-time macros and the three-file extension model to deep-copy ownership and opaque pointer APIs.
 
 ---
 
@@ -12,7 +12,7 @@ A learning-oriented yet fully functional C library that demonstrates how to desi
 
 本库提供 12 种基础数据结构，每种都自包含、互不依赖——你只需要引入实际使用的那些文件。零依赖，无构建系统，只有 `.c` 和 `.h`。
 
-### 这个库为什么值得细读
+### 设计理念
 
 C 语言没有模板、没有 RAII、没有析构函数。在 C 里写一个泛型且内存安全的容器，必须正面处理那些高级语言替你掩盖了的设计问题。
 
@@ -375,7 +375,7 @@ clone_element(const ds_dynamicarray_type *src, int *judge)
 
 This library provides 12 fundamental data structures, each self-contained and independent — you only need the files for the data structures you actually use. No dependencies, no build system, just `.c` and `.h` files.
 
-### Why This Library Is Worth Studying
+### Design Philosophy
 
 C has no templates, no RAII, no destructors. Writing a generic, memory-safe container in C means confronting the design questions that higher-level languages handle for you.
 
