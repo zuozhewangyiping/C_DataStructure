@@ -2,7 +2,7 @@
 
 一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API。
 
-[:cn: 中文版本](README_CN.md)
+[:us: English Version](README_EN.md)
 
 ---
 
