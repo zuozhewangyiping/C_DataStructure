@@ -1,4 +1,4 @@
-# C语言数据结构库 / C Data Structure Library
+﻿# C语言数据结构库 / C Data Structure Library
 
 一个面向学习但功能完备的C语言数据结构库，通过编译期宏展示如何设计类型安全的泛型容器，涵盖三文件扩展模型、深拷贝所有权、不透明指针API等设计要点。
 
@@ -145,21 +145,47 @@ if (ds_dynamicarray_get(array, 0, &data)) {
 }
 ```
 
-### Pop/Erase 双版本
+## 两类容器，两种 erase 返回值约定
 
-删除操作提供两种版本：
+本库的容器分为两类，它们的 `erase` / `pop` 返回值的生命周期不同：
 
-- **普通版** — 返回被删除元素的指针。调用者需手动清理元素内部堆资源。对于基于节点的容器（链表、哈希表），还需 `free(指针)`；对于基于数组的容器，指针会在下次插入时被覆盖，不可 `free`。
-- **`_and_destroy` 版** — 自动完成所有内部清理。当你不需要检查被删除元素时使用。
+**数组类** — DynamicArray、Deque、Stack、Queue
+
+数据存储在连续内存中。`erase` 返回的指针 **直接指向这块内存内部**，不是独立堆块。
+下次 `push` / `insert` 时该位置会被覆盖，指针随即失效。
 
 ```c
-// 手动清理
 DS_DYNAMICARRAY_TYPE *data;
-ds_dynamicarray_pop_back(array, &data);
-DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // 释放元素内部的堆成员
+ds_dynamicarray_erase(da, 0, &data);
 
-// 自动清理
+DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // 清理元素内部的堆资源（如有）
+// ⚠ 不能 free(data) —— 它指向数组内部
+```
+
+**节点类** — SinglyLinkedList、DoubleLinkedList、HashTable
+
+数据存储在独立 `malloc` 的节点中。`erase` 会将节点内的数据 **浅拷贝到一个新 `malloc` 的堆块**，
+释放原节点，然后把新堆块的指针返回给你。你用完必须手动 `free(data)`。
+
+```c
+DS_HASHTABLE_TYPE *data;
+ds_hashtable_erase(ht, 100, &data);
+
+DS_HASHTABLE_DESTROY_ELEMENT(*data);  // 清理元素内部的堆资源（如有）
+free(data);                           // ⚠ 必须 free —— 它是 malloc 分配的新堆块
+```
+
+### `_and_destroy` 变体
+
+不想手动管理上述清理流程？直接使用 `_and_destroy` 变体（如 `pop_back_and_destroy`、
+`erase_and_destroy`），容器帮你完成 **DESTROY_ELEMENT + free（节点类）** 的全部工作。
+
+```c
+// 数组类自动清理
 ds_dynamicarray_pop_back_and_destroy(array);
+
+// 节点类自动清理
+ds_hashtable_erase_and_destroy(ht, 100);
 ```
 
 ### NULL 安全
@@ -508,21 +534,49 @@ if (ds_dynamicarray_get(array, 0, &data)) {
 }
 ```
 
-### Pop/Erase Variants
+## Two Container Families, Two Erase Return Conventions
 
-Deletion operations come in two forms:
+This library's containers fall into two categories, and their `erase` / `pop` return values have different lifetimes:
 
-- **Regular** — returns a pointer to the removed element. The caller must manually clean up heap resources inside the element, then `free()` the pointer (for node-based containers) or simply let it expire (for array-based containers).
-- **`_and_destroy`** — handles all cleanup internally. Use this when you don't need to inspect the removed element.
+**Array-based** — DynamicArray, Deque, Stack, Queue
+
+Data lives in contiguous memory. `erase` returns a pointer **directly into that memory**
+— it is not a separate heap block. The next `push` / `insert` will overwrite that slot,
+invalidating the pointer.
 
 ```c
-// Manual cleanup
 DS_DYNAMICARRAY_TYPE *data;
-ds_dynamicarray_pop_back(array, &data);
-DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // free heap members inside data
+ds_dynamicarray_erase(da, 0, &data);
 
-// Automatic cleanup
+DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // free heap members inside the element (if any)
+// Do NOT free(data) — it points into the container
+```
+
+**Node-based** — SinglyLinkedList, DoubleLinkedList, HashTable
+
+Data lives in separately allocated nodes. `erase` **shallow-copies the node's data
+into a new `malloc`'d block**, frees the node, and returns the new block to you.
+You are responsible for `free(data)` when done.
+
+```c
+DS_HASHTABLE_TYPE *data;
+ds_hashtable_erase(ht, 100, &data);
+
+DS_HASHTABLE_DESTROY_ELEMENT(*data);  // free heap members inside the element (if any)
+free(data);                           // Must free — it was malloc'd for you
+```
+
+### `_and_destroy` Variants
+
+Prefer not to manage this manually? Use the `_and_destroy` variants (e.g. `pop_back_and_destroy`,
+`erase_and_destroy`) — the container handles **DESTROY_ELEMENT + free** (node-based) for you.
+
+```c
+// Array-based automatic cleanup
 ds_dynamicarray_pop_back_and_destroy(array);
+
+// Node-based automatic cleanup
+ds_hashtable_erase_and_destroy(ht, 100);
 ```
 
 ### NULL Safety

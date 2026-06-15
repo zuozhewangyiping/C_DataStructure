@@ -156,53 +156,7 @@ static int capacity_expansion(DS_HashTable *ht)
         new_capacity = 2 * ht->capacity;
     }
 
-    HashNode **new_buckets = (HashNode **)malloc(new_capacity * sizeof(HashNode *));
-    if (new_buckets == NULL)
-    {
-        return 0;
-    }
-
-    int i;
-    for (i = 0; i < new_capacity; i++)
-    {
-        new_buckets[i] = NULL;
-    }
-
-    for (i = 0; i < ht->capacity; i++)
-    {
-        if (ht->buckets[i] != NULL)
-        {
-            HashNode *cur = ht->buckets[i];
-
-            while (cur != NULL)
-            {
-                HashNode *temp = cur;
-                cur = cur->next;
-
-                int hash_index = DS_HASHTABLE_HASH(temp->data, new_capacity);
-
-                if (new_buckets[hash_index] == NULL)
-                {
-                    new_buckets[hash_index] = temp;
-                    temp->next = NULL;
-                }
-                else
-                {
-                    HashNode *cur_ = new_buckets[hash_index];
-
-                    new_buckets[hash_index] = temp;
-                    temp->next = cur_;
-                }
-            }
-        }
-    }
-
-    free(ht->buckets);
-
-    ht->buckets = new_buckets;
-    ht->capacity = new_capacity;
-
-    return 1;
+    return ds_hashtable_reserve(ht, new_capacity);
 }
 
 static HashNode *create_Node(DS_HASHTABLE_TYPE value)
