@@ -1,6 +1,6 @@
 # C Data Structure Library
 
-A learning-oriented yet fully functional C data structure library — type-safe generic containers via compile-time macros, deep-copy ownership, and opaque pointer APIs.
+A learning-oriented yet fully functional C data structure library — type-safe generic containers via compile-time macros, deep-copy ownership, opaque pointer APIs, and a byte-level Huffman compression algorithm.
 
 [:cn: 中文版本](README_CN.md)
 
@@ -22,6 +22,7 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 ## Table of Contents
 
 - [Data Structures at a Glance](#data-structures-at-a-glance)
+- [Algorithms](#algorithms)
 - [Quick Start](#quick-start)
 - [API Conventions](#api-conventions)
 - [Advanced Features](#advanced-features)
@@ -70,6 +71,12 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 | **PriorityQueue (Min)** | O(log n) | O(log n) pop | — | O(1) | Binary min-heap |
 | **PriorityQueue (Max)** | O(log n) | O(log n) pop | — | O(1) | Binary max-heap |
 | **HashTable** | O(1) avg | O(1) avg | O(1) avg | — | Separate chaining, FNV-1a hash |
+
+### Algorithms
+
+| Algorithm | Notes |
+|---|---|
+| **HuffmanCoding** | Byte-level Huffman compression with 8-bit packed output, internal min-heap tree construction, full encode/decode round-trip |
 
 ---
 

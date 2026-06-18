@@ -1,6 +1,6 @@
 # C语言数据结构库
 
-一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API。
+一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API，并包含字节级哈夫曼压缩算法。
 
 [:us: English Version](README_EN.md)
 
@@ -22,6 +22,7 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
 ## 目录
 
 - [数据结构一览](#数据结构一览)
+- [算法](#算法)
 - [快速上手](#快速上手)
 - [API 约定](#api-约定)
 - [进阶功能](#进阶功能)
@@ -70,6 +71,12 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
 | **PriorityQueue (Min)** | O(log n) | O(log n) | — | O(1) | 最小堆，二叉堆实现 |
 | **PriorityQueue (Max)** | O(log n) | O(log n) | — | O(1) | 最大堆，二叉堆实现 |
 | **HashTable** | O(1) 平均 | O(1) 平均 | O(1) 平均 | — | 链地址法，FNV-1a 哈希 |
+
+### 算法
+
+| 算法 | 说明 |
+|---|---|
+| **HuffmanCoding** | 字节级哈夫曼压缩，8 比特打包输出，内嵌最小堆建树，支持任意数据的编码/解码往返 |
 
 ---
 
