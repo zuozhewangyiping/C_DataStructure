@@ -56,6 +56,7 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 |---|---|---|---|---|
 | **SinglyLinkedList** | O(1) head / O(n) | O(1) head / O(n) | O(n) | Index-based and cursor-based ops |
 | **DoubleLinkedList** | O(1) head+tail / O(n) | O(1) head+tail / O(n) | O(n) | Bidirectional traversal |
+| **SkipList** | O(log n) prob. | O(log n) prob. | O(log n) prob. | Probabilistically balanced, multi-level index, cursor ops |
 
 ### Tree-Based (Self-Balancing BST)
 

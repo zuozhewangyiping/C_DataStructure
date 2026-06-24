@@ -17,7 +17,7 @@
 
         - name: Build (strict)
           run: |
-            for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
+            for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList SkipList Stack String test_project Algorithms/HuffmanCoding; do
               echo "=== $dir (library) ==="
               for src in $dir/ds_*.c; do
                 [ -f "$src" ] || continue

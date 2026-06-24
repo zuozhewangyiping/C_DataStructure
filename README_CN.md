@@ -56,6 +56,7 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
 |---|---|---|---|---|
 | **SinglyLinkedList** | O(1) 头 / O(n) | O(1) 头 / O(n) | O(n) | 单向链表，支持索引和游标操作 |
 | **DoubleLinkedList** | O(1) 头尾 / O(n) | O(1) 头尾 / O(n) | O(n) | 双向链表，支持正反向遍历 |
+| **SkipList** | O(log n) 概率 | O(log n) 概率 | O(log n) 概率 | 概率平衡的多层索引结构，游标操作 |
 
 ### 树类（自平衡二叉搜索树）
 
