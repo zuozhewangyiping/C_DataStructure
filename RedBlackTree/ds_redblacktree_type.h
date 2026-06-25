@@ -44,19 +44,21 @@ typedef struct
     } while (0)
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
-#define DS_REDBLACKTREE_CLONE_ELEMENT(e, judge)    \
-    ({                                        \
-        char *name_copy = NULL;               \
-        if ((e).name != NULL)                 \
-        {                                     \
-            name_copy = strdup((e).name);     \
-            if (name_copy == NULL)            \
-                *(judge) = 0;                 \
-        }                                     \
-        (ds_redblacktree_type){.key = (e).key,     \
-                          .value = (e).value, \
-                          .name = name_copy}; \
-    })
+// 编写适配函数，再由宏调用
+static inline ds_redblacktree_type clone_element(const ds_redblacktree_type *src, int *judge)
+{
+    ds_redblacktree_type copy = {.key = src->key, .value = src->value, .name = NULL};
+    if (src->name != NULL)
+    {
+        copy.name = strdup(src->name);
+        if (copy.name == NULL)
+        {
+            *judge = 0;
+        }
+    }
+    return copy;
+}
+#define DS_REDBLACKTREE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 // 比较宏不变（按 key 比较）
 */

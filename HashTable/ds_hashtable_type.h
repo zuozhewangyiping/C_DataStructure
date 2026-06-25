@@ -24,29 +24,33 @@ typedef struct
 #define DS_HASHTABLE_MATCH_KEY(a, b) ((a).key == (b).key ? 1 : 0)
 
 // HASH宏用于哈希运算
-#define DS_HASHTABLE_HASH(e, table_capacity)                         \
-    ({                                                               \
-        unsigned int hash = 2166136261u;                             \
-        unsigned char *bytes = (unsigned char *)&((e).key);          \
-        for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
-        {                                                            \
-            hash ^= bytes[i];                                        \
-            hash *= 16777619u;                                       \
-        }                                                            \
-        (int)(hash % (table_capacity));                              \
-    })
+// 编写适配函数，再由宏调用
+static inline int hash_element(const ds_hashtable_type *e, int capacity)
+{
+    unsigned int hash = 2166136261u;
+    unsigned char *bytes = (unsigned char *)&(e->key);
+    for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++)
+    {
+        hash ^= bytes[i];
+        hash *= 16777619u;
+    }
+    return (int)(hash % capacity);
+}
 
-#define DS_HASHTABLE_HASH_KEY(key, table_capacity)                   \
-    ({                                                               \
-        unsigned int hash = 2166136261u;                             \
-        unsigned char *bytes = (unsigned char *)&(key);              \
-        for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++) \
-        {                                                            \
-            hash ^= bytes[i];                                        \
-            hash *= 16777619u;                                       \
-        }                                                            \
-        (int)(hash % (table_capacity));                              \
-    })
+static inline int hash_key(const DS_HASHTABLE_MATCH_TYPE *key, int capacity)
+{
+    unsigned int hash = 2166136261u;
+    unsigned char *bytes = (unsigned char *)key;
+    for (size_t i = 0; i < sizeof(DS_HASHTABLE_MATCH_TYPE); i++)
+    {
+        hash ^= bytes[i];
+        hash *= 16777619u;
+    }
+    return (int)(hash % capacity);
+}
+
+#define DS_HASHTABLE_HASH(e, cap) hash_element(&(e), cap)
+#define DS_HASHTABLE_HASH_KEY(key, cap) hash_key(&(key), cap)
 
 #endif
 
@@ -92,19 +96,21 @@ typedef struct
     } while (0)
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
-#define DS_HASHTABLE_CLONE_ELEMENT(e, judge)    \
-    ({                                                 \
-        char *name_copy = NULL;                        \
-        if ((e).name != NULL)                          \
-        {                                              \
-            name_copy = strdup((e).name);              \
-            if (name_copy == NULL)                     \
-                *(judge) = 0;                          \
-        }                                              \
-        (ds_hashtable_type){.key = (e).key,     \
-                                   .value = (e).value, \
-                                   .name = name_copy}; \
-    })
+// 编写适配函数，再由宏调用
+static inline ds_hashtable_type clone_element(const ds_hashtable_type *src, int *judge)
+{
+    ds_hashtable_type copy = {.key = src->key, .value = src->value, .name = NULL};
+    if (src->name != NULL)
+    {
+        copy.name = strdup(src->name);
+        if (copy.name == NULL)
+        {
+            *judge = 0;
+        }
+    }
+    return copy;
+}
+#define DS_HASHTABLE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 // MATCH 宏不变（按 key 匹配），如需按 name 匹配则修改：
 // #define DS_HASHTABLE_MATCH(e, target) (strcmp((e).name, target) == 0 ? 1 : 0)

@@ -41,18 +41,21 @@ typedef struct
     } while (0)
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
-#define DS_PRIORITYQUEUE_MAX_CLONE_ELEMENT(e, judge)    \
-    ({                                                  \
-        char *name_copy = NULL;                         \
-        if ((e).name != NULL)                           \
-        {                                               \
-            name_copy = strdup((e).name);               \
-            if (name_copy == NULL)                      \
-                *(judge) = 0;                           \
-        }                                               \
-        (ds_priorityqueue_max_type){.data = (e).data,   \
-                                    .name = name_copy}; \
-    })
+// 编写适配函数，再由宏调用
+static inline ds_priorityqueue_max_type clone_element(const ds_priorityqueue_max_type *src, int *judge)
+{
+    ds_priorityqueue_max_type copy = {.data = src->data, .name = NULL};
+    if (src->name != NULL)
+    {
+        copy.name = strdup(src->name);
+        if (copy.name == NULL)
+        {
+            *judge = 0;
+        }
+    }
+    return copy;
+}
+#define DS_PRIORITYQUEUE_MAX_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 // 比较宏不变（按 data 比较），如需按 name 比较则修改对应宏
 */

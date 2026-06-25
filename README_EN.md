@@ -98,14 +98,19 @@ typedef struct {
 #define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  \
     do { free((e).name); (e).name = NULL; } while (0)
 
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, judge)        \
-    ({                                                  \
-        char *name_copy = (e).name ? strdup((e).name) : NULL; \
-        if ((e).name && !name_copy) *(judge) = 0;      \
-        (ds_dynamicarray_type){.id = (e).id,            \
-                               .name = name_copy,       \
-                               .score = (e).score};     \
-    })
+// Write your clone function, then have the macro call it
+static inline ds_dynamicarray_type
+clone_element(const ds_dynamicarray_type *src, int *judge)
+{
+    ds_dynamicarray_type copy = {.id = src->id, .score = src->score, .name = NULL};
+    if (src->name) {
+        copy.name = strdup(src->name);
+        if (!copy.name) { *judge = 0; return copy; }
+    }
+    return copy;
+}
+
+#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), j)
 
 #define DS_DYNAMICARRAY_MATCH_TYPE int
 #define DS_DYNAMICARRAY_MATCH(e, target) ((e).id == target ? 1 : 0)
@@ -313,49 +318,16 @@ All array-based containers use a **doubling growth strategy**: initial capacity 
 
 ## Writing Portable Macros
 
-The default `CLONE_ELEMENT` in each `_type.h` uses a GNU statement expression `({...})`. This is concise but does not compile under MSVC, and step-through debugging of macro-expanded code is difficult.
+The `_type.h` files use **`static inline` functions** for clone and destroy logic, invoked via macros. This pattern is compatible with all C99 compilers (GCC, Clang, MSVC) and supports step-through debugging.
 
-A more portable alternative is a **`static inline` function** in `_type.h`, with the macro delegating to it:
-
-```c
-// ds_dynamicarray_type.h
-
-typedef struct {
-    int id;
-    char *name;
-} ds_dynamicarray_type;
-
-static inline void destroy_element(ds_dynamicarray_type *e)
-{
-    free(e->name);
-    e->name = NULL;
-}
-
-static inline ds_dynamicarray_type
-clone_element(const ds_dynamicarray_type *src, int *judge)
-{
-    ds_dynamicarray_type copy = {.id = src->id, .name = NULL};
-    if (src->name) {
-        copy.name = strdup(src->name);
-        if (!copy.name) { *judge = 0; return copy; }
-    }
-    return copy;
-}
-
-#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  destroy_element(&(e))
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), (j))
-#define DS_DYNAMICARRAY_MATCH_TYPE          int
-#define DS_DYNAMICARRAY_MATCH(e, t)         ((e).id == (t) ? 1 : 0)
-```
+The default element types contain only scalar fields (int, etc.) and work out of the box. When adding heap-allocated fields, simply edit the struct definition in `_type.h`, write your own clone / destroy functions, and update the macros.
 
 Key points:
 
 - **`static`** avoids duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
-- **`inline`** lets the compiler eliminate call overhead — generated code is identical to the macro version.
+- **`inline`** lets the compiler eliminate call overhead.
 - The macro **call syntax stays the same** — all `.c` / `.h` files remain untouched.
-- This pattern works on **any C99 compiler** (GCC, Clang, MSVC).
-
-Both styles respect the core invariant: **`_type.h` is the only file you ever need to modify.**
+- Core invariant: **`_type.h` is the only file you ever need to modify.**
 
 ---
 

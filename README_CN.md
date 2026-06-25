@@ -98,14 +98,19 @@ typedef struct {
 #define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  \
     do { free((e).name); (e).name = NULL; } while (0)
 
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, judge)        \
-    ({                                                  \
-        char *name_copy = (e).name ? strdup((e).name) : NULL; \
-        if ((e).name && !name_copy) *(judge) = 0;      \
-        (ds_dynamicarray_type){.id = (e).id,            \
-                               .name = name_copy,       \
-                               .score = (e).score};     \
-    })
+// 编写适配函数，再由宏调用
+static inline ds_dynamicarray_type
+clone_element(const ds_dynamicarray_type *src, int *judge)
+{
+    ds_dynamicarray_type copy = {.id = src->id, .score = src->score, .name = NULL};
+    if (src->name) {
+        copy.name = strdup(src->name);
+        if (!copy.name) { *judge = 0; return copy; }
+    }
+    return copy;
+}
+
+#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), j)
 
 #define DS_DYNAMICARRAY_MATCH_TYPE int
 #define DS_DYNAMICARRAY_MATCH(e, target) ((e).id == target ? 1 : 0)
@@ -314,49 +319,16 @@ ds_hashtable_erase_and_destroy(ht, 100);
 
 ## 编写可移植的宏
 
-默认的 `CLONE_ELEMENT` 使用 GNU 语句表达式 `({...})` 将克隆逻辑直接嵌入宏体内。这样很紧凑，但有两个缺点：MSVC 下无法编译，且宏展开后的代码难以逐步调试。
+`_type.h` 中默认使用 **`static inline` 函数**来实现克隆和销毁逻辑，再由宏调用。这种写法兼容所有 C99 编译器（GCC、Clang、MSVC），且支持断点调试。
 
-更可移植的替代方案是在 `_type.h` 中编写 **`static inline` 函数**，然后让宏去调用它：
-
-```c
-// ds_dynamicarray_type.h
-
-typedef struct {
-    int id;
-    char *name;
-} ds_dynamicarray_type;
-
-static inline void destroy_element(ds_dynamicarray_type *e)
-{
-    free(e->name);
-    e->name = NULL;
-}
-
-static inline ds_dynamicarray_type
-clone_element(const ds_dynamicarray_type *src, int *judge)
-{
-    ds_dynamicarray_type copy = {.id = src->id, .name = NULL};
-    if (src->name) {
-        copy.name = strdup(src->name);
-        if (!copy.name) { *judge = 0; return copy; }
-    }
-    return copy;
-}
-
-#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  destroy_element(&(e))
-#define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), (j))
-#define DS_DYNAMICARRAY_MATCH_TYPE          int
-#define DS_DYNAMICARRAY_MATCH(e, t)         ((e).id == (t) ? 1 : 0)
-```
+默认元素类型仅含标量字段（int 等），无需修改。当你需要增加堆分配字段时，只需在 `_type.h` 中修改结构体定义、编写自己的 clone / destroy 函数，并更新宏调用。
 
 要点：
 
 - **`static`** 避免 `_type.h` 被多个 `.c` 文件包含时出现符号重复定义。
-- **`inline`** 允许编译器消除调用开销——生成的代码与宏版完全相同。
+- **`inline`** 允许编译器消除调用开销。
 - 宏的**调用语法不变**，所有 `.c` / `.h` 实现文件无需任何修改。
-- 此模式适用于**任何 C99 编译器**（GCC、Clang、MSVC）。
-
-两种风格都遵守本库的核心不变式：**`_type.h` 是用户唯一需要修改的文件。**
+- 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**
 
 ---
 
