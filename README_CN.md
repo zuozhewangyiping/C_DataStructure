@@ -404,4 +404,4 @@ ds_dynamicarray_destroy(roster);  // 递归销毁嵌套的 String
 
 ## 许可
 
-本项目按原样提供，用于教学和实用目的，未声明特定许可证。
+本项目基于 MIT 许可证发布，详见 [LICENSE](LICENSE) 文件。

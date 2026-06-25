@@ -403,4 +403,4 @@ It demonstrates how `DESTROY_ELEMENT` and `CLONE_ELEMENT` macros should handle n
 
 ## License
 
-This project is provided as-is for educational and practical use. No specific license is declared.
+This project is released under the MIT License. See [LICENSE](LICENSE) for details.
