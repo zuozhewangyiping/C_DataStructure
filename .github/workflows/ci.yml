@@ -42,6 +42,8 @@ jobs:
 
       - name: Build (MSVC)
         shell: bash
+        env:
+          MSYS_NO_PATHCONV: 1
         run: |
           for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
             echo "=== $dir ==="
