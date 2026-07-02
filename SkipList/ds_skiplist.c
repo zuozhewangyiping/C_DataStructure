@@ -64,6 +64,9 @@ void ds_skiplist_destroy(DS_SkipList *skl)
         free(temp);
     }
 
+    // 注意：不能free(skl->header->next);
+    // next 并不是一个独立的指针变量，而是紧跟在结构体后面的一段内存。它的地址并不指向一个独立的 malloc 出来的块。
+    // 对非 malloc 返回的指针调用 free 是未定义行为，运行时会堆损坏崩溃。
     free(skl->header);
     free(skl);
 }
@@ -176,14 +179,14 @@ DS_SkipList *ds_skiplist_clone(const DS_SkipList *skl, int *judge)
         return NULL;
     }
 
-    SkipListNode *cur = skl->header->next[0];
-
     SkipListNode *prev[MAX_LEVEL];
     int i = 0;
     for (i = 0; i < MAX_LEVEL; i++)
     {
         prev[i] = new_skl->header;
     }
+
+    SkipListNode *cur = skl->header->next[0];
 
     while (cur != NULL)
     {
@@ -235,7 +238,8 @@ SkipListNode *ds_skiplist_search(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
 
     SkipListNode *cur = skl->header;
 
-    int i = skl->level - 1; // 从最高层开始查找
+    int i = skl->level - 1;
+
     while (1)
     {
         if (cur->next[i] == NULL)
@@ -246,29 +250,34 @@ SkipListNode *ds_skiplist_search(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
             }
             else
             {
-                return NULL;
+                break;
             }
         }
-        else if (DS_SKIPLIST_LT(cur->next[i]->data, value)) // 如果cur的下一个 < 目标，那么cur在本层后移
+        else
         {
-            cur = cur->next[i];
-        }
-        else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > 目标，那么降层/返回
-        {
-            if (i > 0)
+            if (DS_SKIPLIST_EQ(cur->next[i]->data, value)) // 如果cur的下一个 == 目标，那么返回cur的下一个
             {
-                i--;
+                return cur->next[i];
             }
-            else
+            else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > 目标，那么降层/返回
             {
-                return NULL;
+                if (i > 0)
+                {
+                    i--;
+                }
+                else
+                {
+                    break;
+                }
             }
-        }
-        else // if (DS_SKIPLIST_EQ(cur->next[i]->data, value)) // 如果cur的下一个 == 目标，那么返回cur的下一个
-        {
-            return cur->next[i];
+            else // 如果cur的下一个 < 目标，那么cur在本层后移
+            {
+                cur = cur->next[i];
+            }
         }
     }
+
+    return NULL;
 }
 
 /* Part 7. Cursor Acquisition -----------------------------------------------*/
@@ -281,12 +290,12 @@ SkipListNode *ds_skiplist_find_max(DS_SkipList *skl)
     }
 
     SkipListNode *cur = skl->header;
-    SkipListNode *temp = NULL;
 
-    int i = skl->level - 1; // 从最高层开始查找
+    int i = skl->level - 1;
+
     while (1)
     {
-        while (cur->next[i] == NULL)
+        if (cur->next[i] == NULL)
         {
             if (i > 0)
             {
@@ -294,18 +303,21 @@ SkipListNode *ds_skiplist_find_max(DS_SkipList *skl)
             }
             else
             {
-                return temp;
+                break;
             }
         }
-
-        temp = cur->next[i];
-        cur = cur->next[i];
+        else
+        {
+            cur = cur->next[i];
+        }
     }
+
+    return cur;
 }
 
 SkipListNode *ds_skiplist_find_min(DS_SkipList *skl)
 {
-    if (skl == NULL || skl->header->next[0] == NULL)
+    if (skl == NULL || skl->size == 0)
     {
         return NULL;
     }
@@ -326,7 +338,8 @@ SkipListNode *ds_skiplist_predecessor(DS_SkipList *skl, SkipListNode *cursor)
 
     SkipListNode *cur = skl->header;
 
-    int i = skl->level - 1; // 从最高层开始查找
+    int i = skl->level - 1;
+
     while (1)
     {
         if (cur->next[i] == NULL)
@@ -337,25 +350,31 @@ SkipListNode *ds_skiplist_predecessor(DS_SkipList *skl, SkipListNode *cursor)
             }
             else
             {
-                return cur;
+                break;
             }
         }
-        else if (DS_SKIPLIST_LT(cur->next[i]->data, cursor->data)) // 如果cur的下一个 < 目标，那么cur在本层后移
+        else
         {
-            cur = cur->next[i];
-        }
-        else // if (DS_SKIPLIST_GE(cur->next[i]->data, cursor->data)) // 如果cur的下一个 >= 目标，那么分类讨论（理论上，如果“cur的下一个 > 目标”，那么只能降层；但是与 == 的情况合并起来更方便，而 == 情况需要分类讨论。所以干脆直接统一分类讨论）
-        {
-            if (i > 0) // 如果还没到最底层，那么降层
+            if (DS_SKIPLIST_GE(cur->next[i]->data, cursor->data)) // 如果cur的下一个 >= 目标，那么降层/退出
             {
-                i--;
+                if (i > 0)
+                {
+                    i--;
+                }
+                else
+                {
+                    break;
+                }
             }
-            else // 如果已经到了最底层，那么cur肯定是目标的前驱
+            else // 如果cur的下一个 < 目标，那么cur在本层后移
             {
-                return cur;
+                cur = cur->next[i];
             }
         }
     }
+
+    // 退出循环时的cur就是我们需要的节点
+    return cur;
 }
 
 SkipListNode *ds_skiplist_successor(DS_SkipList *skl, SkipListNode *cursor)
@@ -391,61 +410,51 @@ int ds_skiplist_range_query(DS_SkipList *skl,
         return 0;
     }
 
-    if (DS_SKIPLIST_GT(low, high))
-    {
-        return 1;
-    }
-
-    SkipListNode *begin = NULL; // 设定begin为大于等于low的最小元素
-
-    // 找begin
     SkipListNode *cur = skl->header;
 
-    int i = skl->level - 1; // 从最高层开始查找
+    int i = skl->level - 1;
+
     while (1)
     {
-        if (cur->next[i] == NULL) // 若后移之后cur的下一个不存在，那么分类讨论
+        if (cur->next[i] == NULL)
         {
-            if (i > 0) // 若未降到最低层，就往下降
+            if (i > 0)
             {
                 i--;
             }
-            else // 若已经是最底层，那么说明本表中不存在大于等于low的元素
+            else
             {
-                return 1;
-            }
-        }
-        else if (DS_SKIPLIST_LT(cur->next[i]->data, low)) // 如果cur的下一个 < 目标，那么cur在本层后移
-        {
-            cur = cur->next[i];
-        }
-        else if (DS_SKIPLIST_GT(cur->next[i]->data, low)) // 如果cur的下一个 > 目标，那么分类讨论
-        {
-            if (i > 0) // 若未降到最低层，就往下降
-            {
-                i--;
-            }
-            else // 若已经是最底层，那么“cur的下一个”就是我们要找的begin
-            {
-                begin = cur->next[i];
-
                 break;
             }
         }
-        else // if (DS_SKIPLIST_EQ(cur->next[i]->data, low)) // 如果cur的下一个 == 目标，那么“cur的下一个”就是我们要找的begin
+        else
         {
-            begin = cur->next[i];
-
-            break;
+            if (DS_SKIPLIST_GE(cur->next[i]->data, low)) // 如果cur的下一个 >= low，那么降层/退出
+            {
+                if (i > 0)
+                {
+                    i--;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else // 如果cur的下一个 < low，那么cur在本层后移
+            {
+                cur = cur->next[i];
+            }
         }
     }
 
-    // 找到begin之后开始遍历
-    SkipListNode *cur_ = begin;
-    while (cur_ != NULL && DS_SKIPLIST_LE(cur_->data, high))
+    // 退出循环时的 cur->next[0] 就是第一个 >= low 的节点（有可能是空）
+
+    cur = cur->next[0];
+    while (cur != NULL && DS_SKIPLIST_LE(cur->data, high))
     {
-        visit(&(cur_->data), user_data);
-        cur_ = cur_->next[0];
+        visit(&(cur->data), user_data);
+
+        cur = cur->next[0];
     }
 
     return 1;
@@ -482,7 +491,8 @@ int ds_skiplist_insert(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
 
     if (skl->size > 0)
     {
-        i = skl->level - 1; // 从最高层开始查找
+        i = skl->level - 1;
+
         while (1)
         {
             if (cur->next[i] == NULL)
@@ -498,28 +508,32 @@ int ds_skiplist_insert(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
                     break;
                 }
             }
-            else if (DS_SKIPLIST_LT(cur->next[i]->data, value)) // 如果cur的下一个 < 目标，那么cur在本层后移
+            else
             {
-                cur = cur->next[i];
-            }
-            else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > 目标，那么分类讨论
-            {
-                if (i > 0) // 若未降到最低层，就往下降
+                if (DS_SKIPLIST_EQ(cur->next[i]->data, value))
                 {
-                    prev[i] = cur;
-                    i--;
+                    return 0;
                 }
-                else // 若已经是最底层，那么cur就是我们要找的插入点
+                else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > value，那么降层/退出
                 {
-                    prev[i] = cur;
-                    break;
+                    if (i > 0)
+                    {
+                        prev[i] = cur;
+                        i--;
+                    }
+                    else
+                    {
+                        prev[i] = cur;
+                        break;
+                    }
                 }
-            }
-            else // if (DS_SKIPLIST_EQ(cur->next[i]->data, low)) // 如果cur的下一个 == 目标，那么拒绝插入，直接返回
-            {
-                return 0;
+                else // 如果cur的下一个 < value，那么cur在本层后移
+                {
+                    cur = cur->next[i];
+                }
             }
         }
+        // 退出循环时的 cur 就是插入位置的前一节点
     }
 
     int level = random_level();
@@ -537,7 +551,7 @@ int ds_skiplist_insert(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
         new_node->next[i] = temp;
     }
 
-    if (level > skl->level)
+    if (skl->level < level)
     {
         skl->level = level;
     }
@@ -561,11 +575,10 @@ int ds_skiplist_delete(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
         prev[i] = skl->header;
     }
 
-    SkipListNode *victim = NULL;
-
     SkipListNode *cur = skl->header;
 
-    i = skl->level - 1; // 从最高层开始查找
+    i = skl->level - 1;
+
     while (1)
     {
         if (cur->next[i] == NULL)
@@ -580,38 +593,42 @@ int ds_skiplist_delete(DS_SkipList *skl, DS_SKIPLIST_TYPE value)
                 return 0;
             }
         }
-        else if (DS_SKIPLIST_LT(cur->next[i]->data, value)) // 如果cur的下一个 < 目标，那么cur在本层后移
+        else
         {
-            cur = cur->next[i];
-        }
-        else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > 目标，那么降层/返回
-        {
-            if (i > 0)
+            if (DS_SKIPLIST_EQ(cur->next[i]->data, value))
             {
-                prev[i] = cur;
-                i--;
+                if (i > 0)
+                {
+                    prev[i] = cur;
+                    i--;
+                }
+                else
+                {
+                    prev[0] = cur;
+                    break;
+                }
             }
-            else
+            else if (DS_SKIPLIST_GT(cur->next[i]->data, value)) // 如果cur的下一个 > value，那么降层/返回
             {
-                return 0;
+                if (i > 0)
+                {
+                    prev[i] = cur;
+                    i--;
+                }
+                else
+                {
+                    return 0;
+                }
             }
-        }
-        else // if (DS_SKIPLIST_EQ(cur->next[i]->data, value)) // 如果cur的下一个 == 目标，那么victim为cur的下一个；但是要继续向下搜索
-        {
-            victim = cur->next[i];
-
-            if (i > 0)
+            else // 如果cur的下一个 < value，那么cur在本层后移
             {
-                prev[i] = cur;
-                i--;
-            }
-            else
-            {
-                prev[i] = cur;
-                break;
+                cur = cur->next[i];
             }
         }
     }
+    // 退出循环时的 cur->next[i] 就是要被删除的节点
+
+    SkipListNode *victim = cur->next[i];
 
     for (i = 0; i < victim->level; i++)
     {
