@@ -18,7 +18,8 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
 # Windows（CMD / PowerShell）
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
-# 输出: is_empty: 1 / after push/insert: size=3, capacity=4 / clone: size=1
+# 输出: is_empty: 1, size: 0, capacity: 0
+# ...（实际输出不止一行）
 ```
 
 零依赖，无构建系统，只有 `.c` 和 `.h` 文件。**要求 C99 或更高版本。**

@@ -18,7 +18,8 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
 # Windows (CMD / PowerShell)
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
-# Output: is_empty: 1 / after push/insert: size=3, capacity=4 / clone: size=1
+# Output: is_empty: 1, size: 0, capacity: 0
+# ...（more output follows）
 ```
 
 No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or later.**
