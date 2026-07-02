@@ -10,9 +10,15 @@
 
 ```bash
 git clone https://github.com/zuozhewangyiping/C_DataStructure.git
-cd C_DataStructure/C_DataStructure_src
+cd C_DataStructure
+
+# Linux / macOS
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
-# 输出: size=3, capacity=4, elements: 10 20 30
+
+# Windows（CMD / PowerShell）
+gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
+
+# 输出: is_empty: 1 / after push/insert: size=3, capacity=4 / clone: size=1
 ```
 
 零依赖，无构建系统，只有 `.c` 和 `.h` 文件。**要求 C99 或更高版本。**

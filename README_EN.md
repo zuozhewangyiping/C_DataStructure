@@ -10,9 +10,15 @@ A learning-oriented yet fully functional C data structure library — type-safe 
 
 ```bash
 git clone https://github.com/zuozhewangyiping/C_DataStructure.git
-cd C_DataStructure/C_DataStructure_src
+cd C_DataStructure
+
+# Linux / macOS
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
-# Output: size=3, capacity=4, elements: 10 20 30
+
+# Windows (CMD / PowerShell)
+gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
+
+# Output: is_empty: 1 / after push/insert: size=3, capacity=4 / clone: size=1
 ```
 
 No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or later.**
