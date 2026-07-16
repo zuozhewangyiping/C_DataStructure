@@ -1683,6 +1683,8 @@ int ds_bplustree_delete(DS_BPlusTree *bpt, DS_BPLUSTREE_KEY_TYPE key)
 
     /* 第四步——处理可能的下溢 */
 
+    int is_fa_change = 0; // 用来标记父节点的变化是否会扩散
+
     int num_keys_cur = lp->num_keys;
 
     // 情况 1：本页剩余的节点数量过半，直接将本页写入文件
@@ -1735,8 +1737,6 @@ int ds_bplustree_delete(DS_BPlusTree *bpt, DS_BPLUSTREE_KEY_TYPE key)
     // 当前页内容一直保存于 all 中
     char bro_buf[4096]; // 用来暂存当前页的兄弟页内容
     char fa_buf[4096];  // 用来暂存当前页的父节点页内容
-
-    int is_fa_change = 0; // 用来标记父节点的变化是否会扩散
 
     DS_BPLUSTREE_KEY_TYPE temp_key;
     DS_BPLUSTREE_VALUE_TYPE temp_value;
@@ -2156,8 +2156,7 @@ int ds_bplustree_delete(DS_BPlusTree *bpt, DS_BPLUSTREE_KEY_TYPE key)
         goto done;
     }
 
-done:
-
+done:;
     /* 第五步——内部节点下溢传播（is_fa_change == 1 时）*/
 
     int temp_child;
