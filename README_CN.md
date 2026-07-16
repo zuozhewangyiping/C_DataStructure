@@ -29,6 +29,9 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 ## 目录
 
 - [数据结构一览](#数据结构一览)
+  - [内存容器](#内存容器)
+  - [算法](#算法)
+  - [磁盘类](#磁盘类)
 - [算法](#算法)
 - [快速上手](#快速上手)
 - [API 约定](#api-约定)
@@ -45,7 +48,9 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
 ## 数据结构一览
 
-### 数组类（连续存储）
+### 内存容器
+
+#### 数组类（连续存储）
 
 | 结构 | 插入 | 删除 | 查找 | 说明 |
 |---|---|---|---|---|
@@ -57,7 +62,7 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
 > O(1)* = 均摊 O(1)。查找列同时列出索引访问 O(1) 和搜索 O(n)。
 
-### 节点类（链式存储）
+#### 节点类（链式存储）
 
 | 结构 | 插入 | 删除 | 查找 | 说明 |
 |---|---|---|---|---|
@@ -65,14 +70,14 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 | **DoubleLinkedList** | O(1) 头尾 / O(n) | O(1) 头尾 / O(n) | O(n) | 双向链表，支持正反向遍历 |
 | **SkipList** | O(log n) 概率 | O(log n) 概率 | O(log n) 概率 | 概率平衡的多层索引结构，游标操作 |
 
-### 树类（自平衡二叉搜索树）
+#### 树类（自平衡二叉搜索树）
 
 | 结构 | 插入 | 删除 | 搜索 | 最小/最大 | 遍历 | 说明 |
 |---|---|---|---|---|---|---|
 | **AVLTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | LL/LR/RL/RR 四种旋转 |
 | **RedBlackTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | 标准插入/删除修正规则 |
 
-### 专用容器
+#### 专用容器
 
 | 结构 | 插入 | 删除 | 搜索 | 取顶 | 说明 |
 |---|---|---|---|---|---|
@@ -85,6 +90,12 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 | 算法 | 说明 |
 |---|---|
 | **HuffmanCoding** | 字节级哈夫曼压缩，8 比特打包输出，内嵌最小堆建树，支持任意数据的编码/解码往返 |
+
+### 磁盘类（持久化存储）
+
+| 结构 | 插入 | 删除 | 搜索 | 说明 |
+|---|---|---|---|---|
+| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB 磁盘页 B+ 树，数据持久化到文件，key/value 定长 memcpy
 
 ---
 

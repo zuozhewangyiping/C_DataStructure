@@ -29,6 +29,9 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 ## Table of Contents
 
 - [Data Structures at a Glance](#data-structures-at-a-glance)
+  - [In-Memory Containers](#in-memory-containers)
+  - [Algorithms](#algorithms)
+  - [Disk-Based](#disk-based)
 - [Algorithms](#algorithms)
 - [Quick Start](#quick-start)
 - [API Conventions](#api-conventions)
@@ -45,7 +48,9 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 
 ## Data Structures at a Glance
 
-### Array-Based (Contiguous Storage)
+### In-Memory Containers
+
+#### Array-Based (Contiguous Storage)
 
 | Structure | Insert | Delete | Lookup | Notes |
 |---|---|---|---|---|
@@ -57,7 +62,7 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 
 > O(1)* = amortized O(1). Lookup shows both indexed O(1) and search O(n).
 
-### Node-Based (Linked Storage)
+#### Node-Based (Linked Storage)
 
 | Structure | Insert | Delete | Lookup | Notes |
 |---|---|---|---|---|
@@ -65,14 +70,14 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 | **DoubleLinkedList** | O(1) head+tail / O(n) | O(1) head+tail / O(n) | O(n) | Bidirectional traversal |
 | **SkipList** | O(log n) prob. | O(log n) prob. | O(log n) prob. | Probabilistically balanced, multi-level index, cursor ops |
 
-### Tree-Based (Self-Balancing BST)
+#### Tree-Based (Self-Balancing BST)
 
 | Structure | Insert | Delete | Search | Min/Max | Traverse | Notes |
 |---|---|---|---|---|---|---|
 | **AVLTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | LL/LR/RL/RR rotations |
 | **RedBlackTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | Standard fixup rules |
 
-### Specialized
+#### Specialized
 
 | Structure | Insert | Delete | Search | Peek | Notes |
 |---|---|---|---|---|---|
@@ -85,6 +90,12 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 | Algorithm | Notes |
 |---|---|
 | **HuffmanCoding** | Byte-level Huffman compression with 8-bit packed output, internal min-heap tree construction, full encode/decode round-trip |
+
+### Disk-Based (Persistent Storage)
+
+| Structure | Insert | Delete | Search | Notes |
+|---|---|---|---|---|
+| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB-page B+ tree, data persisted to file, key/value are fixed-size POD |
 
 ---
 

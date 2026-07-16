@@ -17,7 +17,7 @@ jobs:
 
       - name: Build (strict)
         run: |
-          for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList SkipList Stack String test_project Algorithms/HuffmanCoding; do
+          for dir in AVLTree BPlusTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList SkipList Stack String test_project Algorithms/HuffmanCoding; do
             echo "=== $dir (library) ==="
             for src in $dir/ds_*.c; do
               [ -f "$src" ] || continue
@@ -27,7 +27,7 @@ jobs:
 
       - name: Link (relaxed, includes main.c)
         run: |
-          for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
+          for dir in AVLTree BPlusTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
             echo "=== $dir (full) ==="
             ${{ matrix.compiler }} -std=c99 -Wall -Wextra $dir/*.c -o /dev/null || exit 1
           done
@@ -45,7 +45,7 @@ jobs:
         env:
           MSYS_NO_PATHCONV: 1
         run: |
-          for dir in AVLTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
+          for dir in AVLTree BPlusTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
             echo "=== $dir ==="
             cl /nologo /std:c11 /W3 /WX /Fe:$dir/test.exe $dir/*.c > NUL || exit 1
             rm -f $dir/test.exe $dir/*.obj
