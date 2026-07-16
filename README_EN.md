@@ -1,6 +1,6 @@
 # C Data Structure Library
 
-A learning-oriented yet fully functional C data structure library — type-safe generic containers via compile-time macros, deep-copy ownership, opaque pointer APIs, and a byte-level Huffman compression algorithm.
+A learning-oriented yet fully functional C data structure library — type-safe generic containers via compile-time macros, deep-copy ownership, opaque pointer APIs, plus a byte-level Huffman compression algorithm and a disk-page B+ tree.
 
 [:cn: 中文版本](README_CN.md)
 
@@ -316,6 +316,10 @@ ds_dynamicarray_pop_back_and_destroy(array);
 ds_hashtable_erase_and_destroy(ht, 100);
 ```
 
+### Disk-Based — BPlusTree
+
+B+Tree key/value pairs are moved between disk pages and memory via `memcpy` — no CLONE/DESTROY macros involved. `delete` removes data directly from the disk page; no manual memory management is needed. Cursors (`BPlusTreeNode *`) are heap-allocated copies and must be `free(cursor)` after use.
+
 ---
 
 ## Capacity Growth
@@ -346,6 +350,7 @@ Key points:
 - **`inline`** lets the compiler eliminate call overhead.
 - The macro **call syntax stays the same** — all `.c` / `.h` files remain untouched.
 - Core invariant: **`_type.h` is the only file you ever need to modify.**
+- **Exception — disk-based containers:** B+Tree uses fixed-size POD key/value types serialized via `memcpy` to disk pages. CLONE/DESTROY macros are not used.
 
 ---
 

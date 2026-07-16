@@ -1,6 +1,6 @@
 # C语言数据结构库
 
-一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API，并包含字节级哈夫曼压缩算法。
+一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API，并包含字节级哈夫曼压缩算法与磁盘页 B+ 树。
 
 [:us: English Version](README_EN.md)
 
@@ -32,7 +32,6 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
   - [内存容器](#内存容器)
   - [算法](#算法)
   - [磁盘类](#磁盘类)
-- [算法](#算法)
 - [快速上手](#快速上手)
 - [API 约定](#api-约定)
 - [进阶功能](#进阶功能)
@@ -317,6 +316,10 @@ ds_dynamicarray_pop_back_and_destroy(array);
 ds_hashtable_erase_and_destroy(ht, 100);
 ```
 
+### 磁盘类 — BPlusTree
+
+B+ 树的 key/value 通过 `memcpy` 在磁盘页与内存间搬运，不涉及 CLONE/DESTROY 宏。`delete` 直接在磁盘页上移除数据，无需用户手动管理内存。游标（`BPlusTreeNode *`）是 `malloc` 的副本，使用完毕需 `free(cursor)`。
+
 ---
 
 ## 扩容策略
@@ -347,6 +350,7 @@ ds_hashtable_erase_and_destroy(ht, 100);
 - **`inline`** 允许编译器消除调用开销。
 - 宏的**调用语法不变**，所有 `.c` / `.h` 实现文件无需任何修改。
 - 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**
+- **磁盘类容器除外**：B+ 树的 key/value 为定长 POD 类型，通过 `memcpy` 序列化到磁盘页，不使用 CLONE/DESTROY 宏。
 
 ---
 
