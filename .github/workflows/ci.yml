@@ -47,6 +47,6 @@ jobs:
         run: |
           for dir in AVLTree BPlusTree Deque DoubleLinkedList DynamicArray HashTable PriorityQueue Queue RedBlackTree SinglyLinkedList Stack String test_project Algorithms/HuffmanCoding; do
             echo "=== $dir ==="
-            cl /nologo /std:c11 /W3 /WX /Fe:$dir/test.exe $dir/*.c || exit 1
+            cl /nologo /std:c11 /W3 /WX /D_CRT_SECURE_NO_WARNINGS /Fe:$dir/test.exe $dir/*.c || exit 1
             rm -f $dir/test.exe $dir/*.obj
           done
