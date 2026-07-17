@@ -95,7 +95,7 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 
 | Structure | Insert | Delete | Search | Notes |
 |---|---|---|---|---|
-| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB-page B+ tree, data persisted to file, key/value are fixed-size POD |
+| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB-page B+ tree, data persisted to file, key/value read/written via fread/fwrite |
 
 ---
 
@@ -318,7 +318,7 @@ ds_hashtable_erase_and_destroy(ht, 100);
 
 ### Disk-Based — BPlusTree
 
-B+Tree key/value pairs are moved between disk pages and memory via `memcpy` — no CLONE/DESTROY macros involved. `delete` removes data directly from the disk page; no manual memory management is needed. Cursors (`BPlusTreeNode *`) are heap-allocated copies and must be `free(cursor)` after use.
+B+Tree key/value pairs are moved between disk pages and memory via `fread`/`fwrite` — no CLONE/DESTROY macros involved. `delete` removes data directly from the disk page; no manual memory management is needed. Cursors (`BPlusTreeNode *`) are heap-allocated copies and must be `free(cursor)` after use.
 
 ---
 
@@ -350,7 +350,7 @@ Key points:
 - **`inline`** lets the compiler eliminate call overhead.
 - The macro **call syntax stays the same** — all `.c` / `.h` files remain untouched.
 - Core invariant: **`_type.h` is the only file you ever need to modify.**
-- **Exception — disk-based containers:** B+Tree uses fixed-size POD key/value types serialized via `memcpy` to disk pages. CLONE/DESTROY macros are not used.
+- **Exception — disk-based containers:** B+Tree uses fixed-size POD key/value types read from and written to disk pages via `fread`/`fwrite`. CLONE/DESTROY macros are not used.
 
 ---
 

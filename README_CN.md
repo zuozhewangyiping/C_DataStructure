@@ -94,7 +94,7 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
 | 结构 | 插入 | 删除 | 搜索 | 说明 |
 |---|---|---|---|---|
-| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB 磁盘页 B+ 树，数据持久化到文件，key/value 定长 memcpy
+| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB 磁盘页 B+ 树，数据持久化到文件，key/value 通过 fread/fwrite 整页读写
 
 ---
 
@@ -318,7 +318,7 @@ ds_hashtable_erase_and_destroy(ht, 100);
 
 ### 磁盘类 — BPlusTree
 
-B+ 树的 key/value 通过 `memcpy` 在磁盘页与内存间搬运，不涉及 CLONE/DESTROY 宏。`delete` 直接在磁盘页上移除数据，无需用户手动管理内存。游标（`BPlusTreeNode *`）是 `malloc` 的副本，使用完毕需 `free(cursor)`。
+B+ 树的 key/value 通过 `fread`/`fwrite` 整页搬运于磁盘与内存之间，不涉及 CLONE/DESTROY 宏。`delete` 直接在磁盘页上移除数据，无需用户手动管理内存。游标（`BPlusTreeNode *`）是 `malloc` 的副本，使用完毕需 `free(cursor)`。
 
 ---
 
@@ -350,7 +350,7 @@ B+ 树的 key/value 通过 `memcpy` 在磁盘页与内存间搬运，不涉及 C
 - **`inline`** 允许编译器消除调用开销。
 - 宏的**调用语法不变**，所有 `.c` / `.h` 实现文件无需任何修改。
 - 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**
-- **磁盘类容器除外**：B+ 树的 key/value 为定长 POD 类型，通过 `memcpy` 序列化到磁盘页，不使用 CLONE/DESTROY 宏。
+- **磁盘类容器除外**：B+ 树的 key/value 为定长 POD 类型，通过 `fread`/`fwrite` 整页读写磁盘，不使用 CLONE/DESTROY 宏。
 
 ---
 

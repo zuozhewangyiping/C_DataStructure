@@ -32,5 +32,5 @@ typedef struct
 } ds_bplustree_value_type;
 
 // 比较宏不变（按 key 比较）
-// 无需 DESTROY / CLONE 宏 —— 磁盘版通过 memcpy 序列化，sizeof 固定即可
+// 无需 DESTROY / CLONE 宏 —— 磁盘版通过 fread/fwrite 整页读写，sizeof 固定即可
 */

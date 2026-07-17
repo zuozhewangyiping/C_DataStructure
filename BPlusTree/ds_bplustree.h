@@ -164,7 +164,7 @@ int ds_bplustree_delete(DS_BPlusTree *bpt, DS_BPLUSTREE_KEY_TYPE key);          
  * B+ 树是基于磁盘页的持久化数据结构，通过 _type.h 中的宏管理 key / value 类型：
  *
  *   - key 和 value 必须是编译期定长类型（sizeof 固定、内部不含指针），
- *     序列化与反序列化均通过 memcpy 完成。
+ *     序列化与反序列化均通过 fread/fwrite 整页读写完成。
  *
  *   - insert 将 key 和 value 写入叶子页，页分裂时数据在页间搬移。
  *     若 malloc 失败（游标等临时对象），操作回滚，B+ 树状态不变。
