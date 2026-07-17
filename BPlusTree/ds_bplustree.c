@@ -201,7 +201,7 @@ int ds_bplustree_is_empty(const DS_BPlusTree *bpt)
     return (bpt->size == 0 ? 1 : 0);
 }
 
-/* Part 3. Traversals（回调可读写 data）---------------------------------------*/
+/* Part 3. Traversals（回调只读 data）---------------------------------------*/
 
 int ds_bplustree_traverse(DS_BPlusTree *bpt, void *user_data, void (*visit)(const DS_BPLUSTREE_KEY_TYPE *key, const DS_BPLUSTREE_VALUE_TYPE *value, void *callback_data))
 {
@@ -714,7 +714,7 @@ BPlusTreeNode *ds_bplustree_successor(DS_BPlusTree *bpt, BPlusTreeNode *cursor)
     return cursor_p;
 }
 
-/* Part 9. Range Query（回调可读写 data）-------------------------------------*/
+/* Part 9. Range Query（回调只读 data）-------------------------------------*/
 
 int ds_bplustree_range_query(DS_BPlusTree *bpt,
                              DS_BPLUSTREE_KEY_TYPE low,
