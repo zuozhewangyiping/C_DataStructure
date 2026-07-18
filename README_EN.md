@@ -113,8 +113,12 @@ typedef struct {
     double score;
 } ds_dynamicarray_type;
 
-#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e)  \
-    do { free((e).name); (e).name = NULL; } while (0)
+static inline void destroy_element(const ds_dynamicarray_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+#define DS_DYNAMICARRAY_DESTROY_ELEMENT(e) destroy_element(&(e))
 
 // Write your clone function, then have the macro call it
 static inline ds_dynamicarray_type
@@ -127,11 +131,15 @@ clone_element(const ds_dynamicarray_type *src, int *judge)
     }
     return copy;
 }
-
 #define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), j)
 
 #define DS_DYNAMICARRAY_MATCH_TYPE int
-#define DS_DYNAMICARRAY_MATCH(e, target) ((e).id == target ? 1 : 0)
+static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_MATCH_TYPE target)
+{
+    return e->id == target ? 1 : 0;
+}
+#define DS_DYNAMICARRAY_MATCH(e, t) match_element(&(e), t)
+```
 ```
 
 ### 2. Use the Data Structure
