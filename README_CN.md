@@ -1,12 +1,12 @@
 # C语言数据结构库
 
-一个面向学习但功能完备的C语言数据结构库——编译期宏实现类型安全的泛型容器、深拷贝所有权、不透明指针API，并包含字节级哈夫曼压缩算法与磁盘页 B+ 树。
+面向学习但功能完备的C语言数据结构库。编译期宏实现类型安全的泛型容器，深拷贝所有权模型，不透明指针 API。提供 Python 脚本代码生成器以支持单编译单元多类型并存，同时包含字节级哈夫曼压缩算法与磁盘页 B+ 树。
 
 [:us: English Version](README_EN.md)
 
 ---
 
-## 30 秒体验
+## 快速体验
 
 ```bash
 git clone https://github.com/zuozhewangyiping/C_DataStructure.git
@@ -33,6 +33,7 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
   - [算法](#算法)
   - [磁盘类](#磁盘类)
 - [快速上手](#快速上手)
+- [多类型支持（代码生成器）](#多类型支持代码生成器)
 - [API 约定](#api-约定)
 - [进阶功能](#进阶功能)
 - [两类容器，两种 erase 返回值约定](#两类容器两种-erase-返回值约定)
@@ -163,13 +164,13 @@ int main() {
 }
 ```
 
-> **重要：清理你自己手上的那份数据**
+> **注意：调用者负责清理传入的原始数据**
 >
-> 容器在 insert / set / push 时会深拷贝你的数据。**你自己传入的那份数据仍然属于你。**
-> 如果元素类型含堆字段（如 `strdup` 产生的 `char *name`），操作完成后**必须**调用
-> `DESTROY_ELEMENT` 清理自己的副本。否则你分配的堆内存无人释放——容器不会替你 `free`。
+> 容器在 insert / set / push 时深拷贝传入的数据，**原始数据的所有权仍属于调用者**。
+> 如果元素类型含堆字段（如 `strdup` 产生的 `char *name`），调用者须在操作完成后
+> 调用 `DESTROY_ELEMENT` 清理自身持有的副本。容器不会自动释放调用者传入的堆资源。
 >
-> 如果元素类型只有标量字段（int、double 等），像 `(type){10}` 这样直接传入即可——无堆资源，无需手动清理。
+> 如果元素类型仅含标量字段（int、double 等），直接传入字面量即可，无需清理。
 
 ### 3. 编译
 
@@ -185,9 +186,97 @@ gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test
 
 所有数据结构互相独立——只编译你需要的 `.c` 文件即可。
 
+> **进阶：同一容器、多种类型？** 如果你需要在同一个程序里使用同一容器的多种元素类型（比如 `DynamicArray<Student>` 和 `DynamicArray<Course>`），请参考[多类型支持（代码生成器）](#多类型支持代码生成器)章节。
+
 ---
 
-## API 约定
+## 多类型支持（代码生成器）
+
+### 设计动机
+
+`_type.h` 中的宏是全局的——一个编译单元内只能定义一种 `ds_dynamicarray_type`。如果你需要一个存 `Student` 的动态数组和一个存 `Course` 的动态数组，直接 `#include` 同一容器的头文件两次会因类型名和宏名冲突而无法编译。
+
+这个问题是 C 语言宏泛型的固有限制——并非本库的设计缺陷。**代码生成器**就是为突破这个限制而设计的。
+
+### 使用方法
+
+每个容器目录下都有一个 `generate.py`（PriorityQueue 有 `generate_max.py` 和 `generate_min.py` 两个）。它读取母版三件套（`_type.h`、`.h`、`.c`），通过标识符批量重命名，生成三份带后缀的独立副本。母版文件不受任何影响。
+
+**使用流程：**
+
+```bash
+# 1. 编辑母版 ds_dynamicarray_type.h，定义 Student 类型
+# 2. 运行脚本，传入后缀名
+cd DynamicArray
+python generate.py student    # 生成 ds_dynamicarray_student_type.h / .h / .c
+
+# 3. 修改 _type.h，定义 Course 类型，再生成一份
+python generate.py course     # 生成 ds_dynamicarray_course_type.h / .h / .c
+```
+
+**在代码中同时使用：**
+
+```c
+#include "ds_dynamicarray_student.h"
+#include "ds_dynamicarray_course.h"
+
+int main() {
+    // 学生数组
+    DS_DynamicArray_Student *roster = ds_dynamicarray_student_create();
+    DS_DYNAMICARRAY_STUDENT_TYPE s = {1, strdup("Alice"), 95.5};
+    ds_dynamicarray_student_push_back(roster, s);
+    DS_DYNAMICARRAY_STUDENT_DESTROY_ELEMENT(s);
+
+    // 课程数组 —— 完全独立的类型
+    DS_DynamicArray_Course *courses = ds_dynamicarray_course_create();
+    DS_DYNAMICARRAY_COURSE_TYPE c = {1001, strdup("Math"), 4};
+    ds_dynamicarray_course_push_back(courses, c);
+    DS_DYNAMICARRAY_COURSE_DESTROY_ELEMENT(c);
+
+    ds_dynamicarray_student_destroy(roster);
+    ds_dynamicarray_course_destroy(courses);
+    return 0;
+}
+```
+
+编译时同时链接两份生成文件：
+
+```bash
+gcc -o app main.c ds_dynamicarray_student.c ds_dynamicarray_course.c
+```
+
+### 替换原理
+
+脚本使用**两趟占位符替换**算法，对所有与类型相关的标识符（类型名、宏名、函数名、结构体名、`static inline` 辅助函数名、include 路径）系统化地加上后缀：
+
+1. **第一趟**：所有 `old` → 占位符 `@@N@@`（按 old 长度降序，长串优先，避免短串先吃掉长串的部分）
+2. **第二趟**：占位符 → `new`（占位符之间互不干扰）
+
+为什么需要占位符？举个例子：`ds_dynamicarray_` → `ds_dynamicarray_student_` 之后，这个新串仍然以 `ds_dynamicarray_` 开头。如果直接做多规则替换，它会被后续规则二次误匹配。占位符不含任何原始标识符片段，彻底隔离了替换规则之间的相互干扰。
+
+后缀可以是任意合法 C 标识符（`student`、`v2`、`configA` 等），算法对所有后缀名安全。
+
+### 各容器生成器差异
+
+不同容器拥有的宏和函数不同，生成器替换的标识符也相应不同：
+
+| 容器 | 脚本 | 主要替换项 |
+|---|---|---|
+| **DynamicArray** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline 函数 |
+| **Stack / Queue** | `generate.py` | DESTROY + CLONE + 2 static inline 函数（最简） |
+| **Deque** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline 函数 |
+| **SinglyLinkedList / DoubleLinkedList** | `generate.py` | DESTROY + CLONE + MATCH + 游标类型 + 3 static inline 函数 |
+| **AVLTree / RedBlackTree** | `generate.py` | DESTROY + CLONE + 5 比较宏 + 游标类型 + 2 static inline 函数 |
+| **SkipList** | `generate.py` | DESTROY + CLONE + 5 比较宏 + 游标类型 |
+| **PriorityQueue (Min/Max)** | `generate_min.py` / `generate_max.py` | DESTROY + CLONE + 5 比较宏（函数已带 `_min`/`_max` 后缀） |
+| **HashTable** | `generate.py` | DESTROY + CLONE + MATCH + MATCH_KEY + HASH + HASH_KEY + 6 static inline 函数（最复杂） |
+| **BPlusTree** | `generate.py` | key/value 独立类型 + 5 比较宏 + 游标类型（无 DESTROY/CLONE） |
+
+### 单类型场景
+
+如果你不需要在同一个编译单元里对同一种容器使用多种元素类型，**完全忽略 `generate.py` 即可**。原有的"编辑 `_type.h` → 编译 `.c`"流程和之前一模一样，不受任何影响。
+
+---
 
 ### 返回值规范
 
@@ -313,7 +402,7 @@ free(data);                           // ⚠ 必须 free —— 它是 malloc �
 
 ### `_and_destroy` 变体
 
-不想手动管理上述清理流程？直接使用 `_and_destroy` 变体，容器帮你完成 **DESTROY_ELEMENT + free**（节点类）的全部工作：
+如需自动清理，可使用 `_and_destroy` 变体，容器负责完成 **DESTROY_ELEMENT + free**（节点类）的全部工作：
 
 ```c
 // 数组类自动清理
@@ -337,7 +426,7 @@ B+ 树的 key/value 通过 `fread`/`fwrite` 整页搬运于磁盘与内存之间
 
 ## 设计取舍
 
-- **不用 `void*` 擦除类型。** 泛型通过 `_type.h` 中的宏实现。编译期类型安全，但修改元素类型后需重新编译。
+- **不用 `void*` 擦除类型。** 泛型通过 `_type.h` 中的宏实现。编译期类型安全，但宏的天然限制是同一编译单元只能注册一种类型——`generate.py` 代码生成器通过标识符重命名解决了这个问题，在保持类型安全的前提下实现了多类型并存。
 - **只靠返回值报告错误。** 不使用 `errno`、`assert` 或 `exit`。所有错误通过返回值体现——无隐藏控制流。
 - **单线程。** 无锁、无原子操作，假设单线程环境。
 - **无构建系统。** 每个数据结构就是一组独立的 `.c`/`.h` 文件——不需要 Makefile 或 CMake。
@@ -356,7 +445,7 @@ B+ 树的 key/value 通过 `fread`/`fwrite` 整页搬运于磁盘与内存之间
 - **`static`** 避免 `_type.h` 被多个 `.c` 文件包含时出现符号重复定义。
 - **`inline`** 允许编译器消除调用开销。
 - 宏的**调用语法不变**，所有 `.c` / `.h` 实现文件无需任何修改。
-- 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**
+- 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**（若使用代码生成器，同样只需编辑母版 `_type.h`，再运行脚本——母版仍然是唯一需要编辑的 C 文件。）
 - **磁盘类容器除外**：B+ 树的 key/value 为定长 POD 类型，通过 `fread`/`fwrite` 整页读写磁盘，不使用 CLONE/DESTROY 宏。
 
 ---
@@ -393,13 +482,13 @@ ds_dynamicarray_destroy(roster);  // 递归销毁嵌套的 String
 
 | 方案 | 类型安全 | 内存安全 | 上手难度 | 适用场景 |
 |---|---|---|---|---|
-| **本库** | 编译期（宏） | 深拷贝所有权模型 | 中等（需理解宏系统） | 需要可读、可复用的泛型容器 |
+| **本库** | 编译期（宏） | 深拷贝所有权模型 | 中等（需理解宏系统；多类型场景需运行一次 Python 脚本） | 需要可读、可复用的泛型容器 |
 | 手写裸结构体 | 编译期 | 手动管理 | 入门低，做对难 | 一次性、简单场景 |
 | `void*` + 函数指针 | 无（运行时强转） | 易出错（"谁来释放？"） | 低 | 快速内部原型 |
 | C++ STL | 编译期（模板） | RAII | 低（如果会 C++） | 能用 C++ 编译器的场景 |
 | `klib` / `uthash` | 宏（纯头文件） | 各有差异 | 中等 | 极简、只要头文件的场景 |
 
-**一句话：** 如果你在写 C、想要类型安全的泛型容器、在意清晰的所有权语义、并且愿意为每个数据结构配置一个 `_type.h` 文件，那么这个库就是为你准备的。
+**简言之：** 如果你在写 C、想要类型安全的泛型容器、在意清晰的所有权语义、并且愿意为每个数据结构配置一个 `_type.h` 文件，那么这个库就是为你准备的。
 
 ---
 

@@ -1,12 +1,12 @@
 # C Data Structure Library
 
-A learning-oriented yet fully functional C data structure library — type-safe generic containers via compile-time macros, deep-copy ownership, opaque pointer APIs, plus a byte-level Huffman compression algorithm and a disk-page B+ tree.
+A learning-oriented yet fully functional C data structure library. Type-safe generic containers via compile-time macros, deep-copy ownership model, and opaque pointer APIs. Includes a Python script code generator for multi-type support in a single compilation unit, a byte-level Huffman compression algorithm, and a disk-page B+ tree.
 
 [:cn: 中文版本](README_CN.md)
 
 ---
 
-## 30-Second Try
+## Quick Try
 
 ```bash
 git clone https://github.com/zuozhewangyiping/C_DataStructure.git
@@ -34,6 +34,7 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
   - [Disk-Based](#disk-based)
 - [Algorithms](#algorithms)
 - [Quick Start](#quick-start)
+- [Multi-Type Support (Code Generator)](#multi-type-support-code-generator)
 - [API Conventions](#api-conventions)
 - [Advanced Features](#advanced-features)
 - [Two Container Families, Two Erase Conventions](#two-container-families-two-erase-conventions)
@@ -165,14 +166,15 @@ int main() {
 }
 ```
 
-> **IMPORTANT: Clean Up Your Own Copy**
+> **IMPORTANT: Caller Retains Ownership of Original Data**
 >
-> The container deep-copies your data on insert / set / push. **You remain the owner**
-> of the original you passed in. If your element type has heap fields (like `char *name`
-> from `strdup`), you **must** call `DESTROY_ELEMENT` on your local copy afterward.
+> The container deep-copies data on insert / set / push. **Ownership of the original
+> remains with the caller.** If the element type contains heap fields (e.g. `char *name`
+> from `strdup`), the caller must call `DESTROY_ELEMENT` on the local copy after the
+> operation. The container will not free heap resources owned by the caller.
 >
-> If your element has only scalar fields (int, double, etc.), passing `(type){10}`
-> needs no cleanup — nothing on the heap.
+> If the element has only scalar fields (int, double, etc.), a compound literal such as
+> `(type){10}` may be passed directly — no cleanup is required.
 
 ### 3. Compile
 
@@ -186,9 +188,97 @@ gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test
 
 All data structures are independent — compile only the `.c` files you need.
 
+> **Advanced: one container, multiple types?** If you need several instantiations of the same container in one program (e.g. `DynamicArray<Student>` and `DynamicArray<Course>`), see [Multi-Type Support (Code Generator)](#multi-type-support-code-generator).
+
 ---
 
-## API Conventions
+## Multi-Type Support (Code Generator)
+
+### Motivation
+
+The macros in `_type.h` are global — you can only define one `ds_dynamicarray_type` per compilation unit. If you need one dynamic array of `Student` and another of `Course`, including the same container header twice will fail because type names and macro names collide.
+
+This is an inherent limitation of macro-based generics in C, not a design flaw. The **code generator** exists to overcome it.
+
+### How to Use
+
+Every container directory contains a `generate.py` (PriorityQueue has both `generate_max.py` and `generate_min.py`). It reads the three mother files (`_type.h`, `.h`, `.c`), systematically renames all type-related identifiers, and emits three independent copies with a suffix. The mother files are never touched.
+
+**Workflow:**
+
+```bash
+# 1. Edit the mother ds_dynamicarray_type.h to define your Student type
+# 2. Run the script with a suffix
+cd DynamicArray
+python generate.py student    # produces ds_dynamicarray_student_type.h / .h / .c
+
+# 3. Edit _type.h again for Course, then generate another copy
+python generate.py course     # produces ds_dynamicarray_course_type.h / .h / .c
+```
+
+**Using both types in the same program:**
+
+```c
+#include "ds_dynamicarray_student.h"
+#include "ds_dynamicarray_course.h"
+
+int main() {
+    // Student array
+    DS_DynamicArray_Student *roster = ds_dynamicarray_student_create();
+    DS_DYNAMICARRAY_STUDENT_TYPE s = {1, strdup("Alice"), 95.5};
+    ds_dynamicarray_student_push_back(roster, s);
+    DS_DYNAMICARRAY_STUDENT_DESTROY_ELEMENT(s);
+
+    // Course array — a completely independent type
+    DS_DynamicArray_Course *courses = ds_dynamicarray_course_create();
+    DS_DYNAMICARRAY_COURSE_TYPE c = {1001, strdup("Math"), 4};
+    ds_dynamicarray_course_push_back(courses, c);
+    DS_DYNAMICARRAY_COURSE_DESTROY_ELEMENT(c);
+
+    ds_dynamicarray_student_destroy(roster);
+    ds_dynamicarray_course_destroy(courses);
+    return 0;
+}
+```
+
+Compile with both generated files:
+
+```bash
+gcc -o app main.c ds_dynamicarray_student.c ds_dynamicarray_course.c
+```
+
+### How It Works
+
+The script uses a **two-pass placeholder replacement** algorithm that systematically adds the suffix to every type-related identifier (type names, macro names, function names, struct names, `static inline` helper names, and include paths):
+
+1. **Pass 1:** every `old` → placeholder `@@N@@` (sorted by length descending — longest strings first, so shorter ones don't eat parts of longer ones)
+2. **Pass 2:** placeholder → `new` (placeholders don't interfere with each other)
+
+Why placeholders? Consider `ds_dynamicarray_` → `ds_dynamicarray_student_`. The result still starts with `ds_dynamicarray_`. Without placeholders, subsequent rules could match it again. Placeholders contain no original identifier fragments, completely isolating replacement rules from each other.
+
+The suffix can be any valid C identifier (`student`, `v2`, `configA`, etc.) — the algorithm is safe for all of them.
+
+### Generator Differences by Container
+
+Each container has a different set of macros and functions, so the generator replaces different identifiers:
+
+| Container | Script | Key Replacements |
+|---|---|---|
+| **DynamicArray** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline functions |
+| **Stack / Queue** | `generate.py` | DESTROY + CLONE + 2 static inline functions (simplest) |
+| **Deque** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline functions |
+| **SinglyLinkedList / DoubleLinkedList** | `generate.py` | DESTROY + CLONE + MATCH + cursor type + 3 static inline functions |
+| **AVLTree / RedBlackTree** | `generate.py` | DESTROY + CLONE + 5 comparison macros + cursor type + 2 static inline functions |
+| **SkipList** | `generate.py` | DESTROY + CLONE + 5 comparison macros + cursor type |
+| **PriorityQueue (Min/Max)** | `generate_min.py` / `generate_max.py` | DESTROY + CLONE + 5 comparison macros (functions already `_min`/`_max`-suffixed) |
+| **HashTable** | `generate.py` | DESTROY + CLONE + MATCH + MATCH_KEY + HASH + HASH_KEY + 6 static inline functions (most complex) |
+| **BPlusTree** | `generate.py` | Separate key/value types + 5 comparison macros + cursor type (no DESTROY/CLONE) |
+
+### Single-Type Usage
+
+If you don't need multiple element types for the same container in one compilation unit, **ignore `generate.py` entirely**. The original workflow — edit `_type.h`, compile the `.c` file — works exactly as before.
+
+---
 
 ### Return Values
 
@@ -314,7 +404,7 @@ free(data);                           // Must free — it was malloc'd for you
 
 ### `_and_destroy` Variants
 
-Don't want to manage this manually? Use the `_and_destroy` variants — the container handles **DESTROY_ELEMENT + free** (node-based) for you:
+For automatic cleanup, use the `_and_destroy` variants — the container handles **DESTROY_ELEMENT + free** (node-based) for you:
 
 ```c
 // Array-based automatic cleanup
@@ -338,7 +428,7 @@ All array-based containers use a **doubling growth strategy**: initial capacity 
 
 ## Design Trade-offs
 
-- **No `void*` erasure.** Generics via macros in `_type.h`. Compile-time type safety at the cost of recompilation when the element type changes.
+- **No `void*` erasure.** Generics via macros in `_type.h`. Compile-time type safety, but macros are naturally limited to one type registration per compilation unit — the `generate.py` code generator solves this through identifier renaming, enabling multiple type instantiations without sacrificing type safety.
 - **No error codes beyond return values.** No `errno`, `assert`, or `exit`. All errors reported through return values — no hidden control flow.
 - **Single-threaded.** No locking or atomic operations. Assumes a single-threaded environment.
 - **No build system.** Each data structure is a standalone set of `.c`/`.h` files — no Makefile or CMake required.
@@ -357,7 +447,7 @@ Key points:
 - **`static`** avoids duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
 - **`inline`** lets the compiler eliminate call overhead.
 - The macro **call syntax stays the same** — all `.c` / `.h` files remain untouched.
-- Core invariant: **`_type.h` is the only file you ever need to modify.**
+- Core invariant: **`_type.h` is the only file you ever need to modify.** (When using the code generator, you still only edit the mother `_type.h`, then run the script — the mother file remains the only C file you touch.)
 - **Exception — disk-based containers:** B+Tree uses fixed-size POD key/value types read from and written to disk pages via `fread`/`fwrite`. CLONE/DESTROY macros are not used.
 
 ---
@@ -394,13 +484,13 @@ It demonstrates how `DESTROY_ELEMENT` and `CLONE_ELEMENT` macros should handle n
 
 | Approach | Type Safety | Memory Safety | Learning Curve | When to Use |
 |---|---|---|---|---|
-| **This library** | Compile-time (macros) | Deep-copy ownership model | Medium (learn the macro system) | You want readable, reusable generic containers |
+| **This library** | Compile-time (macros) | Deep-copy ownership model | Medium (learn the macro system; one Python script run for multi-type) | You want readable, reusable generic containers |
 | Hand-rolled structs | Compile-time | Manual (you own it) | Low to start, high to get right | One-off, simple cases |
 | `void*` + function pointers | None (runtime casts) | Error-prone ("who frees what?") | Low | Quick internal prototyping |
 | C++ STL | Compile-time (templates) | RAII | Low (if you know C++) | You can use a C++ compiler |
 | `klib` / `uthash` | Macros (header-only) | Varies | Medium | Minimalist, header-only needs |
 
-**Bottom line:** This library is for you if you're writing C, want type-safe generic containers, care about clear ownership semantics, and are willing to configure a `_type.h` file per data structure.
+**In short:** This library is for you if you're writing C, want type-safe generic containers, care about clear ownership semantics, and are willing to configure a `_type.h` file per data structure.
 
 ---
 
