@@ -6,13 +6,20 @@ typedef struct
     int value;
 } ds_stack_type;
 
-#define DS_STACK_DESTROY_ELEMENT(e) \
-    do                              \
-    {                               \
-    } while (0)
+// 以下宏接收的参数 e 类型为 DS_STACK_TYPE
 
-#define DS_STACK_CLONE_ELEMENT(e, judge) \
-    ((ds_stack_type){.value = (e).value})
+static inline void destroy_element(const ds_stack_type *e)
+{
+    (void)e;
+}
+#define DS_STACK_DESTROY_ELEMENT(e) destroy_element(&(e))
+
+static inline ds_stack_type clone_element(const ds_stack_type *src, int *judge)
+{
+    (void)judge;
+    return *src;
+}
+#define DS_STACK_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 #endif
 
@@ -25,12 +32,12 @@ typedef struct
 } ds_stack_type;
 
 // 需要修改 DESTROY_ELEMENT
-#define DS_STACK_DESTROY_ELEMENT(e) \
-    do                              \
-    {                               \
-        free((e).name);             \
-        (e).name = NULL;            \
-    } while (0)
+static inline void destroy_element(const ds_stack_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+#define DS_STACK_DESTROY_ELEMENT(e) destroy_element(&(e))
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
 // 编写适配函数，再由宏调用

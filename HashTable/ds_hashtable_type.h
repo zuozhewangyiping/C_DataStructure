@@ -9,19 +9,31 @@ typedef struct
 
 // 以下宏接收的参数 e 类型为 DS_HASHTABLE_TYPE
 
-#define DS_HASHTABLE_DESTROY_ELEMENT(e) \
-    do                                  \
-    {                                   \
-        /* nothing to free */           \
-    } while (0)
+static inline void destroy_element(const ds_hashtable_type *e)
+{
+    (void)e;
+}
+#define DS_HASHTABLE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
-#define DS_HASHTABLE_CLONE_ELEMENT(e, judge) \
-    ((ds_hashtable_type){.key = (e).key,     \
-                         .value = (e).value})
+static inline ds_hashtable_type clone_element(const ds_hashtable_type *src, int *judge)
+{
+    (void)judge;
+    return *src;
+}
+#define DS_HASHTABLE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 #define DS_HASHTABLE_MATCH_TYPE int
-#define DS_HASHTABLE_MATCH(e, target) ((e).key == target ? 1 : 0)
-#define DS_HASHTABLE_MATCH_KEY(a, b) ((a).key == (b).key ? 1 : 0)
+static inline int match_element(const ds_hashtable_type *e, DS_HASHTABLE_MATCH_TYPE target)
+{
+    return (e)->key == target ? 1 : 0;
+}
+#define DS_HASHTABLE_MATCH(e, target) match_element(&(e), target)
+
+static inline int match_key(const ds_hashtable_type *a, const ds_hashtable_type *b)
+{
+    return (a)->key == (b)->key ? 1 : 0;
+}
+#define DS_HASHTABLE_MATCH_KEY(a, b) match_key(&(a), &(b))
 
 // HASH宏用于哈希运算
 // 编写适配函数，再由宏调用
@@ -88,12 +100,12 @@ typedef struct
 } ds_hashtable_type;
 
 // 需要修改 DESTROY_ELEMENT
-#define DS_HASHTABLE_DESTROY_ELEMENT(e) \
-    do                                         \
-    {                                          \
-        free((e).name);                        \
-        (e).name = NULL;                       \
-    } while (0)
+static inline void destroy_element(const ds_hashtable_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+#define DS_HASHTABLE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
 // 编写适配函数，再由宏调用
@@ -112,6 +124,14 @@ static inline ds_hashtable_type clone_element(const ds_hashtable_type *src, int 
 }
 #define DS_HASHTABLE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
-// MATCH 宏不变（按 key 匹配），如需按 name 匹配则修改：
-// #define DS_HASHTABLE_MATCH(e, target) (strcmp((e).name, target) == 0 ? 1 : 0)
+// 如需按 name 匹配，同步修改 DS_HASHTABLE_MATCH_TYPE、match_element 及 match_key：
+// #define DS_HASHTABLE_MATCH_TYPE char *
+// static inline int match_element(const ds_hashtable_type *e, DS_HASHTABLE_MATCH_TYPE target)
+// {
+//     return strcmp(e->name, target) == 0 ? 1 : 0;
+// }
+// static inline int match_key(const ds_hashtable_type *a, const ds_hashtable_type *b)
+// {
+//     return strcmp(a->name, b->name) == 0 ? 1 : 0;
+// }
 */

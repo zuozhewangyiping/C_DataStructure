@@ -31,6 +31,11 @@ typedef struct
     char name[64];   // 固定长度，不能使用 char *（指针无法持久化到磁盘）
 } ds_bplustree_value_type;
 
-// 比较宏不变（按 key 比较）
+// 比较宏（按 key 比较）。若 key 改为 char *，需同步修改为 strcmp 版本：
+// #define DS_BPLUSTREE_LT(a, b) (strcmp((a).key, (b).key) < 0)
+// #define DS_BPLUSTREE_GT(a, b) (strcmp((a).key, (b).key) > 0)
+// #define DS_BPLUSTREE_EQ(a, b) (strcmp((a).key, (b).key) == 0)
+// #define DS_BPLUSTREE_LE(a, b) (strcmp((a).key, (b).key) <= 0)
+// #define DS_BPLUSTREE_GE(a, b) (strcmp((a).key, (b).key) >= 0)
 // 无需 DESTROY / CLONE 宏 —— 磁盘版通过 fread/fwrite 整页读写，sizeof 固定即可
 */

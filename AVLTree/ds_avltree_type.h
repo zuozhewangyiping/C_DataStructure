@@ -15,14 +15,18 @@ typedef struct
 #define DS_AVLTREE_LE(a, b) ((a).key <= (b).key)
 #define DS_AVLTREE_GE(a, b) ((a).key >= (b).key)
 
-#define DS_AVLTREE_DESTROY_ELEMENT(e) \
-    do                                \
-    {                                 \
-    } while (0)
+static inline void destroy_element(const ds_avltree_type *e)
+{
+    (void)e;
+}
+#define DS_AVLTREE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
-#define DS_AVLTREE_CLONE_ELEMENT(e, judge) \
-    ((ds_avltree_type){.key = (e).key,     \
-                       .value = (e).value})
+static inline ds_avltree_type clone_element(const ds_avltree_type *src, int *judge)
+{
+    (void)judge;
+    return *src;
+}
+#define DS_AVLTREE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 #endif
 
@@ -36,12 +40,12 @@ typedef struct
 } ds_avltree_type;
 
 // 需要修改 DESTROY_ELEMENT
-#define DS_AVLTREE_DESTROY_ELEMENT(e) \
-    do                                \
-    {                                 \
-        free((e).name);               \
-        (e).name = NULL;              \
-    } while (0)
+static inline void destroy_element(const ds_avltree_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+#define DS_AVLTREE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
 // 编写适配函数，再由宏调用
@@ -60,5 +64,10 @@ static inline ds_avltree_type clone_element(const ds_avltree_type *src, int *jud
 }
 #define DS_AVLTREE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
-// 比较宏不变（按 key 比较）
+// 比较宏（按 key 比较）。若 key 改为 char *，需同步修改为 strcmp 版本：
+// #define DS_AVLTREE_LT(a, b) (strcmp((a).key, (b).key) < 0)
+// #define DS_AVLTREE_GT(a, b) (strcmp((a).key, (b).key) > 0)
+// #define DS_AVLTREE_EQ(a, b) (strcmp((a).key, (b).key) == 0)
+// #define DS_AVLTREE_LE(a, b) (strcmp((a).key, (b).key) <= 0)
+// #define DS_AVLTREE_GE(a, b) (strcmp((a).key, (b).key) >= 0)
 */

@@ -8,13 +8,18 @@ typedef struct
 
 // 以下宏接收的参数 e 类型为 DS_QUEUE_TYPE
 
-#define DS_QUEUE_DESTROY_ELEMENT(e) \
-    do                              \
-    {                               \
-    } while (0)
+static inline void destroy_element(const ds_queue_type *e)
+{
+    (void)e;
+}
+#define DS_QUEUE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
-#define DS_QUEUE_CLONE_ELEMENT(e, judge) \
-    ((ds_queue_type){.data = (e).data})
+static inline ds_queue_type clone_element(const ds_queue_type *src, int *judge)
+{
+    (void)judge;
+    return *src;
+}
+#define DS_QUEUE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
 
 #endif
 
@@ -27,12 +32,12 @@ typedef struct
 } ds_queue_type;
 
 // 需要修改 DESTROY_ELEMENT
-#define DS_QUEUE_DESTROY_ELEMENT(e) \
-    do                              \
-    {                               \
-        free((e).name);             \
-        (e).name = NULL;            \
-    } while (0)
+static inline void destroy_element(const ds_queue_type *e)
+{
+    free(e->name);
+    e->name = NULL;
+}
+#define DS_QUEUE_DESTROY_ELEMENT(e) destroy_element(&(e))
 
 // 需要修改 CLONE_ELEMENT（深拷贝）
 // 编写适配函数，再由宏调用
@@ -50,7 +55,4 @@ static inline ds_queue_type clone_element(const ds_queue_type *src, int *judge)
     return copy;
 }
 #define DS_QUEUE_CLONE_ELEMENT(e, judge) clone_element(&(e), judge)
-
-// MATCH 宏不变（按 data 匹配），如需按 name 匹配则修改：
-// #define DS_QUEUE_MATCH(e, target) (strcmp((e).name, target) == 0 ? 1 : 0)
 */
