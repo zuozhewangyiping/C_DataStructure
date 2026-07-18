@@ -7,7 +7,7 @@ typedef struct
     int value;
 } ds_skiplist_type;
 
-// 以下宏接收的参数 e 类型为 DS_SKIPLIST_TYPE
+// 以下宏及函数均操作 DS_SKIPLIST_TYPE 类型
 
 #define DS_SKIPLIST_LT(a, b) ((a).key < (b).key)
 #define DS_SKIPLIST_GT(a, b) ((a).key > (b).key)
@@ -15,7 +15,7 @@ typedef struct
 #define DS_SKIPLIST_LE(a, b) ((a).key <= (b).key)
 #define DS_SKIPLIST_GE(a, b) ((a).key >= (b).key)
 
-static inline void destroy_element(const ds_skiplist_type *e)
+static inline void destroy_element(ds_skiplist_type *e)
 {
     (void)e;
 }

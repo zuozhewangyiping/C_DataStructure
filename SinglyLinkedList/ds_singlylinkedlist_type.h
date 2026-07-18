@@ -7,9 +7,9 @@ typedef struct
     int value;
 } ds_singlylinkedlist_type;
 
-// 以下宏接收的参数 e 类型为 DS_SINGLYLINKEDLIST_TYPE
+// 以下宏及函数均操作 DS_SINGLYLINKEDLIST_TYPE 类型
 
-static inline void destroy_element(const ds_singlylinkedlist_type *e)
+static inline void destroy_element(ds_singlylinkedlist_type *e)
 {
     (void)e;
 }
@@ -25,7 +25,7 @@ static inline ds_singlylinkedlist_type clone_element(const ds_singlylinkedlist_t
 #define DS_SINGLYLINKEDLIST_MATCH_TYPE int
 static inline int match_element(const ds_singlylinkedlist_type *e, DS_SINGLYLINKEDLIST_MATCH_TYPE target)
 {
-    return (e)->key == target ? 1 : 0;
+    return e->key == target ? 1 : 0;
 }
 #define DS_SINGLYLINKEDLIST_MATCH(e, target) match_element(&(e), target)
 

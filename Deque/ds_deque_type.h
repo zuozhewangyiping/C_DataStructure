@@ -6,9 +6,9 @@ typedef struct
     int data;
 } ds_deque_type;
 
-// 以下宏接收的参数 e 类型为 DS_DEQUE_TYPE
+// 以下宏及函数均操作 DS_DEQUE_TYPE 类型
 
-static inline void destroy_element(const ds_deque_type *e)
+static inline void destroy_element(ds_deque_type *e)
 {
     (void)e;
 }
@@ -24,7 +24,7 @@ static inline ds_deque_type clone_element(const ds_deque_type *src, int *judge)
 #define DS_DEQUE_MATCH_TYPE int
 static inline int match_element(const ds_deque_type *e, DS_DEQUE_MATCH_TYPE target)
 {
-    return (e)->data == target ? 1 : 0;
+    return e->data == target ? 1 : 0;
 }
 #define DS_DEQUE_MATCH(e, target) match_element(&(e), target)
 

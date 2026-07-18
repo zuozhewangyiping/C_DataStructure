@@ -6,7 +6,7 @@ typedef struct
     int data;
 } ds_priorityqueue_max_type;
 
-// 以下宏接收的参数 a,b,e 类型为 DS_PRIORITYQUEUE_MAX_TYPE
+// 以下宏及函数均操作 DS_PRIORITYQUEUE_MAX_TYPE 类型
 
 #define DS_PRIORITYQUEUE_MAX_LT(a, b) ((a).data < (b).data)
 #define DS_PRIORITYQUEUE_MAX_GT(a, b) ((a).data > (b).data)
@@ -14,7 +14,7 @@ typedef struct
 #define DS_PRIORITYQUEUE_MAX_LE(a, b) ((a).data <= (b).data)
 #define DS_PRIORITYQUEUE_MAX_GE(a, b) ((a).data >= (b).data)
 
-static inline void destroy_element_max(const ds_priorityqueue_max_type *e)
+static inline void destroy_element_max(ds_priorityqueue_max_type *e)
 {
     (void)e;
 }

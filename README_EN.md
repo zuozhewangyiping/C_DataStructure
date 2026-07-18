@@ -141,8 +141,7 @@ static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_M
 }
 #define DS_DYNAMICARRAY_MATCH(e, t) match_element(&(e), t)
 ```
-```
-
+	
 ### 2. Use the Data Structure
 
 ```c

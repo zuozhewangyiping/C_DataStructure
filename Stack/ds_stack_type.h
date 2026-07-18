@@ -6,9 +6,9 @@ typedef struct
     int value;
 } ds_stack_type;
 
-// 以下宏接收的参数 e 类型为 DS_STACK_TYPE
+// 以下宏及函数均操作 DS_STACK_TYPE 类型
 
-static inline void destroy_element(const ds_stack_type *e)
+static inline void destroy_element(ds_stack_type *e)
 {
     (void)e;
 }

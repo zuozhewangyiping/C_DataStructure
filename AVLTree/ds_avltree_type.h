@@ -7,7 +7,7 @@ typedef struct
     int value;
 } ds_avltree_type;
 
-// 以下宏接收的参数 e 类型为 DS_AVLTREE_TYPE
+// 以下宏及函数均操作 DS_AVLTREE_TYPE 类型
 
 #define DS_AVLTREE_LT(a, b) ((a).key < (b).key)
 #define DS_AVLTREE_GT(a, b) ((a).key > (b).key)
@@ -15,7 +15,7 @@ typedef struct
 #define DS_AVLTREE_LE(a, b) ((a).key <= (b).key)
 #define DS_AVLTREE_GE(a, b) ((a).key >= (b).key)
 
-static inline void destroy_element(const ds_avltree_type *e)
+static inline void destroy_element(ds_avltree_type *e)
 {
     (void)e;
 }

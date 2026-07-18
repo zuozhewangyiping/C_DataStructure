@@ -6,7 +6,7 @@ typedef struct
     int data;
 } ds_priorityqueue_min_type;
 
-// 以下宏接收的参数 a,b,e 类型为 DS_PRIORITYQUEUE_MIN_TYPE
+// 以下宏及函数均操作 DS_PRIORITYQUEUE_MIN_TYPE 类型
 
 #define DS_PRIORITYQUEUE_MIN_LT(a, b) ((a).data < (b).data)
 #define DS_PRIORITYQUEUE_MIN_GT(a, b) ((a).data > (b).data)
@@ -14,7 +14,7 @@ typedef struct
 #define DS_PRIORITYQUEUE_MIN_LE(a, b) ((a).data <= (b).data)
 #define DS_PRIORITYQUEUE_MIN_GE(a, b) ((a).data >= (b).data)
 
-static inline void destroy_element_min(const ds_priorityqueue_min_type *e)
+static inline void destroy_element_min(ds_priorityqueue_min_type *e)
 {
     (void)e;
 }

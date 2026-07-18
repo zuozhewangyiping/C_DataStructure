@@ -6,9 +6,9 @@ typedef struct
     int data;
 } ds_queue_type;
 
-// 以下宏接收的参数 e 类型为 DS_QUEUE_TYPE
+// 以下宏及函数均操作 DS_QUEUE_TYPE 类型
 
-static inline void destroy_element(const ds_queue_type *e)
+static inline void destroy_element(ds_queue_type *e)
 {
     (void)e;
 }

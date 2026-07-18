@@ -7,9 +7,9 @@ typedef struct
     int value;
 } ds_hashtable_type;
 
-// 以下宏接收的参数 e 类型为 DS_HASHTABLE_TYPE
+// 以下宏及函数均操作 DS_HASHTABLE_TYPE 类型
 
-static inline void destroy_element(const ds_hashtable_type *e)
+static inline void destroy_element(ds_hashtable_type *e)
 {
     (void)e;
 }
@@ -25,18 +25,17 @@ static inline ds_hashtable_type clone_element(const ds_hashtable_type *src, int 
 #define DS_HASHTABLE_MATCH_TYPE int
 static inline int match_element(const ds_hashtable_type *e, DS_HASHTABLE_MATCH_TYPE target)
 {
-    return (e)->key == target ? 1 : 0;
+    return e->key == target ? 1 : 0;
 }
 #define DS_HASHTABLE_MATCH(e, target) match_element(&(e), target)
 
 static inline int match_key(const ds_hashtable_type *a, const ds_hashtable_type *b)
 {
-    return (a)->key == (b)->key ? 1 : 0;
+    return a->key == b->key ? 1 : 0;
 }
 #define DS_HASHTABLE_MATCH_KEY(a, b) match_key(&(a), &(b))
 
-// HASH宏用于哈希运算
-// 编写适配函数，再由宏调用
+// 以下为 HASH 宏的辅助函数
 static inline int hash_element(const ds_hashtable_type *e, int capacity)
 {
     unsigned int hash = 2166136261u;
