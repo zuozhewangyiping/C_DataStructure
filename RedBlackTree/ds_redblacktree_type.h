@@ -40,7 +40,7 @@ typedef struct
 } ds_redblacktree_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element(const ds_redblacktree_type *e)
+static inline void destroy_element(ds_redblacktree_type *e)
 {
     free(e->name);
     e->name = NULL;

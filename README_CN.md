@@ -113,7 +113,7 @@ typedef struct {
     double score;
 } ds_dynamicarray_type;
 
-static inline void destroy_element(const ds_dynamicarray_type *e)
+static inline void destroy_element(ds_dynamicarray_type *e)
 {
     free(e->name);
     e->name = NULL;

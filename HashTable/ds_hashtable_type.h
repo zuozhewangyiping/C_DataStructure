@@ -100,7 +100,7 @@ typedef struct
 } ds_hashtable_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element(const ds_hashtable_type *e)
+static inline void destroy_element(ds_hashtable_type *e)
 {
     free(e->name);
     e->name = NULL;

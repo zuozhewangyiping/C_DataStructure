@@ -38,7 +38,7 @@ typedef struct
 } ds_priorityqueue_min_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element_min(const ds_priorityqueue_min_type *e)
+static inline void destroy_element_min(ds_priorityqueue_min_type *e)
 {
     free(e->name);
     e->name = NULL;

@@ -38,7 +38,7 @@ typedef struct
 } ds_priorityqueue_max_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element_max(const ds_priorityqueue_max_type *e)
+static inline void destroy_element_max(ds_priorityqueue_max_type *e)
 {
     free(e->name);
     e->name = NULL;

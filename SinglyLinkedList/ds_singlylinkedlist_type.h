@@ -41,7 +41,7 @@ typedef struct
 } ds_singlylinkedlist_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element(const ds_singlylinkedlist_type *e)
+static inline void destroy_element(ds_singlylinkedlist_type *e)
 {
     free(e->name);
     e->name = NULL;

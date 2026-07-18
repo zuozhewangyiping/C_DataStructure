@@ -32,7 +32,7 @@ typedef struct
 } ds_queue_type;
 
 // 需要修改 DESTROY_ELEMENT
-static inline void destroy_element(const ds_queue_type *e)
+static inline void destroy_element(ds_queue_type *e)
 {
     free(e->name);
     e->name = NULL;
