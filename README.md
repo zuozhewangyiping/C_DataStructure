@@ -1,8 +1,8 @@
 # C语言数据结构库 / C Data Structure Library
 
-一个面向学习但功能完备的C语言数据结构库。
+用纯 C 语言对标 C++ STL 的教学级数据结构库。
 
-A learning-oriented yet fully functional C data structure library.
+A teaching-grade data structure library in pure C, modeled after the C++ STL.
 
 ---
 
