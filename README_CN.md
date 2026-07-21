@@ -1,46 +1,27 @@
-# C语言数据结构库
+# C_DataStructure
 
-面向学习但功能完备的C语言数据结构库。编译期宏实现类型安全的泛型容器，深拷贝所有权模型，不透明指针 API。提供 Python 脚本代码生成器以支持单编译单元多类型并存，同时包含字节级哈夫曼压缩算法与磁盘页 B+ 树。
+用纯 C 语言对标 C++ STL 的教学级数据结构库。
 
-[:us: English Version](README_EN.md)
+C 语言缺少模板、RAII 和迭代器——STL 的三大基础。本库用纯 C 手段逐一给出了替代方案：
 
----
+- **宏泛型 + 代码生成器** 替代模板，实现编译期单态化。
+- **`DESTROY_ELEMENT` / `CLONE_ELEMENT` 宏** 替代析构与拷贝构造，容器自动管理元素生命周期。
+- **不透明游标 + 索引访问** 替代迭代器。
 
-## 快速体验
-
-```bash
-git clone https://github.com/zuozhewangyiping/C_DataStructure.git
-cd C_DataStructure
-
-# Linux / macOS
-gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
-
-# Windows（CMD / PowerShell）
-gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
-
-# 输出: is_empty: 1, size: 0, capacity: 0
-# ...（实际输出不止一行）
-```
-
-零依赖，无构建系统，只有 `.c` 和 `.h` 文件。**要求 C99 或更高版本。**
+在此基础上，14 个容器提供了 `push_back` / `pop_back` / `insert` / `erase` / `find` 等统一的接口命名。同时包含磁盘页 B+ 树与哈夫曼压缩算法。
 
 ---
 
 ## 目录
 
 - [数据结构一览](#数据结构一览)
-  - [内存容器](#内存容器)
-  - [算法](#算法)
-  - [磁盘类](#磁盘类)
 - [快速上手](#快速上手)
 - [多类型支持（代码生成器）](#多类型支持代码生成器)
-- [API 约定](#api-约定)
+- [核心设计理念](#核心设计理念)
+- [API 目录](#api-目录)
 - [进阶功能](#进阶功能)
-- [两类容器，两种 erase 返回值约定](#两类容器两种-erase-返回值约定)
-- [扩容策略](#扩容策略)
-- [设计取舍](#设计取舍)
-- [编写可移植的宏](#编写可移植的宏)
-- [test_project](#test_project)
+- [项目结构导读](#项目结构导读)
+- [实现与设计考量](#实现与设计考量)
 - [与其他方案对比](#与其他方案对比)
 - [许可](#许可)
 
@@ -48,83 +29,151 @@ gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
 
 ## 数据结构一览
 
-### 内存容器
+本库包含 14 个数据结构和 1 个算法，分为四层：
 
-#### 数组类（连续存储）
+### 1. 序列型
 
-| 结构 | 插入 | 删除 | 查找 | 说明 |
-|---|---|---|---|---|
-| **DynamicArray** | O(1)* / O(n) | O(1)* / O(n) | O(1) / O(n) | 泛型动态数组（类比 C++ `std::vector`） |
-| **Stack** | O(1)* | O(1) | O(1) 栈顶 | LIFO 栈，基于动态数组 |
-| **Deque** | O(1)* | O(1) | O(1) | 双端队列，循环数组，两端 O(1) |
-| **Queue** | O(1)* | O(1) | O(1) 队首 | FIFO 队列，循环数组 |
-| **String** | O(1)* / O(n) | O(n) | O(1) | 字符动态数组，支持比较、子串、拼接 |
+元素按插入顺序排列，支持遍历操作。
 
-> O(1)* = 均摊 O(1)。查找列同时列出索引访问 O(1) 和搜索 O(n)。
+#### 连续存储
 
-#### 节点类（链式存储）
+| 容器 | 定位 | 插入 | 删除 | 访问 | 说明 |
+|------|------|:--:|:--:|:--:|------|
+| **DynamicArray** | 泛型动态数组 | O(1)\* / O(n) | O(1)\* / O(n) | O(1) 索引 | 类比 C++ `std::vector` |
+| **String** | 动态字符串 | O(1)\* / O(n) | O(n) | O(1) 索引 | 支持比较、子串、拼接、C 字符串互转 |
+| **Deque** | 双端队列 | O(1)\* | O(1) | O(1) 索引 | 循环数组，支持随机位置插入/删除 |
 
-| 结构 | 插入 | 删除 | 查找 | 说明 |
-|---|---|---|---|---|
-| **SinglyLinkedList** | O(1) 头 / O(n) | O(1) 头 / O(n) | O(n) | 单向链表，支持索引和游标操作 |
-| **DoubleLinkedList** | O(1) 头尾 / O(n) | O(1) 头尾 / O(n) | O(n) | 双向链表，支持正反向遍历 |
-| **SkipList** | O(log n) 概率 | O(log n) 概率 | O(log n) 概率 | 概率平衡的多层索引结构，游标操作 |
+> O(1)\* = 均摊 O(1)。
 
-#### 树类（自平衡二叉搜索树）
+#### 节点存储
 
-| 结构 | 插入 | 删除 | 搜索 | 最小/最大 | 遍历 | 说明 |
-|---|---|---|---|---|---|---|
-| **AVLTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | LL/LR/RL/RR 四种旋转 |
-| **RedBlackTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | 标准插入/删除修正规则 |
+| 容器 | 定位 | 插入 | 删除 | 访问 | 说明 |
+|------|------|:--:|:--:|:--:|------|
+| **SinglyLinkedList** | 单向链表 | O(1) 头 / O(n) | O(1) 头 / O(n) | O(n) 索引 | 类比 C++ `std::forward_list` |
+| **DoubleLinkedList** | 双向链表 | O(1) 头尾 / O(n) | O(1) 头尾 / O(n) | O(n) 索引 | 类比 C++ `std::list`，支持双向游标操作 |
 
-#### 专用容器
+#### 受限序列
 
-| 结构 | 插入 | 删除 | 搜索 | 取顶 | 说明 |
-|---|---|---|---|---|---|
-| **PriorityQueue (Min)** | O(log n) | O(log n) | — | O(1) | 最小堆，二叉堆实现 |
-| **PriorityQueue (Max)** | O(log n) | O(log n) | — | O(1) | 最大堆，二叉堆实现 |
-| **HashTable** | O(1) 平均 | O(1) 平均 | O(1) 平均 | — | 链地址法，FNV-1a 哈希 |
+| 容器 | 定位 | 核心操作 | 说明 |
+|------|------|------|------|
+| **Stack** | 栈（LIFO） | O(1) push / pop / peek | 基于动态数组 |
+| **Queue** | 队列（FIFO） | O(1) enqueue / dequeue | 循环缓冲区 |
 
-### 算法
+### 2. 关联型
+
+元素按 key 组织和查找，而非插入顺序。
+
+#### 散列存储
+
+| 容器 | 定位 | 平均查找 | 说明 |
+|------|------|:--:|------|
+| **HashTable** | 哈希表 | O(1) | 拉链法，FNV-1a 哈希，支持 insert（拒绝重复）/ put（覆盖） |
+
+#### 排序树
+
+| 容器 | 定位 | 查找 | 插入 | 删除 | 说明 |
+|------|------|:--:|:--:|:--:|------|
+| **AVLTree** | 严格平衡 BST | O(log n) | O(log n) | O(log n) | LL/LR/RL/RR 四种旋转，高度差 ≤1 |
+| **RedBlackTree** | 红黑树 | O(log n) | O(log n) | O(log n) | 插入最多两次旋转，删除更复杂 |
+
+#### 概率排序
+
+| 容器 | 定位 | 期望查找 | 说明 |
+|------|------|:--:|------|
+| **SkipList** | 跳表 | O(log n) | 32 层概率平衡，实现简洁 |
+
+### 3. 堆型
+
+只关心极值，不关心全局顺序。
+
+| 容器 | 定位 | push | pop | peek | 说明 |
+|------|------|:--:|:--:|:--:|------|
+| **PriorityQueue（Max）** | 最大堆 | O(log n) | O(log n) | O(1) | 二叉堆实现 |
+| **PriorityQueue（Min）** | 最小堆 | O(log n) | O(log n) | O(1) | 与 Max 独立实现，比较方向相反 |
+
+### 4. 持久型
+
+数据持久化于磁盘（运行时通过 `fread` / `fwrite` 整页读写）。
+
+| 容器 | 定位 | 查找 | 插入 | 删除 | 说明 |
+|------|------|:--:|:--:|:--:|------|
+| **BPlusTree** | 磁盘 B+ 树 | O(log n) | O(log n) | O(log n) | 4KB 页，文件持久化，废弃页回收 |
+
+### 5. 算法
 
 | 算法 | 说明 |
-|---|---|
-| **HuffmanCoding** | 字节级哈夫曼压缩，8 比特打包输出，内嵌最小堆建树，支持任意数据的编码/解码往返 |
-
-### 磁盘类（持久化存储）
-
-| 结构 | 插入 | 删除 | 搜索 | 说明 |
-|---|---|---|---|---|
-| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB 磁盘页 B+ 树，数据持久化到文件，key/value 通过 fread/fwrite 整页读写
-
----
+|------|------|
+| **HuffmanCoding** | 哈夫曼压缩，内嵌最小堆建树，8 比特位打包，支持编解码往返 |
 
 ## 快速上手
 
-### 1. 配置元素类型
+### 1. 零门槛体验
 
-编辑所选数据结构的 `_type.h` 文件。这是**你唯一需要修改的文件**：
+```bash
+git clone https://github.com/zuozhewangyiping/C_DataStructure.git
+cd C_DataStructure
+gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
+```
+
+零依赖，无构建系统，只有 `.c` 和 `.h` 文件。**要求 C99 或更高版本。**
+
+### 2. 写第一个程序
+
+```c
+// main.c
+#include <stdio.h>
+#include "DynamicArray/ds_dynamicarray.h"
+
+int main(void)
+{
+    DS_DynamicArray *da = ds_dynamicarray_create();
+
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){10});
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){20});
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){30});
+
+    printf("size: %d\n", ds_dynamicarray_size(da));
+
+    DS_DYNAMICARRAY_TYPE *p;
+    for (int i = 0; i < ds_dynamicarray_size(da); i++) {
+        ds_dynamicarray_get(da, i, &p);
+        printf("da[%d] = %d\n", i, p->data);
+    }
+
+    ds_dynamicarray_destroy(da);
+    return 0;
+}
+```
+
+```bash
+gcc -o main main.c DynamicArray/ds_dynamicarray.c && ./main
+```
+
+默认元素类型是 `{ int data }`。到此为止不需要了解任何泛型机制。
+
+### 3. 配置元素类型
+
+如果默认的 `int` 不满足需求，编辑对应容器的 `ds_xxx_type.h`。这是你唯一需要修改的文件：
 
 ```c
 // ds_dynamicarray_type.h
 typedef struct {
-    int id;
-    char *name;       // 堆分配字段
+    int   id;
+    char *name;        // 堆分配字段
     double score;
 } ds_dynamicarray_type;
 
-static inline void destroy_element(ds_dynamicarray_type *e)
-{
+// 销毁：释放 name
+static inline void destroy_element(ds_dynamicarray_type *e) {
     free(e->name);
     e->name = NULL;
 }
 #define DS_DYNAMICARRAY_DESTROY_ELEMENT(e) destroy_element(&(e))
 
-// 编写适配函数，再由宏调用
+// 克隆：深拷贝 name
 static inline ds_dynamicarray_type
-clone_element(const ds_dynamicarray_type *src, int *judge)
-{
-    ds_dynamicarray_type copy = {.id = src->id, .score = src->score, .name = NULL};
+clone_element(const ds_dynamicarray_type *src, int *judge) {
+    ds_dynamicarray_type copy = { .id = src->id, .score = src->score, .name = NULL };
     if (src->name) {
         copy.name = strdup(src->name);
         if (!copy.name) { *judge = 0; return copy; }
@@ -133,15 +182,16 @@ clone_element(const ds_dynamicarray_type *src, int *judge)
 }
 #define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), j)
 
+// 匹配：按 id 查找
 #define DS_DYNAMICARRAY_MATCH_TYPE int
-static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_MATCH_TYPE target)
-{
+static inline int match_element(const ds_dynamicarray_type *e,
+                                DS_DYNAMICARRAY_MATCH_TYPE target) {
     return e->id == target ? 1 : 0;
 }
 #define DS_DYNAMICARRAY_MATCH(e, t) match_element(&(e), t)
 ```
 
-### 2. 使用数据结构
+### 4. 使用
 
 ```c
 #include "ds_dynamicarray.h"
@@ -149,87 +199,81 @@ static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_M
 int main() {
     DS_DynamicArray *arr = ds_dynamicarray_create();
 
-    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
+    DS_DYNAMICARRAY_TYPE tmp1 = { 1, strdup("Alice"), 95.5 };
     ds_dynamicarray_push_back(arr, tmp1);
-    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // 容器已有深拷贝，释放自己的副本
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);   // 容器已深拷贝，释放自己的原值
 
-    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
+    DS_DYNAMICARRAY_TYPE tmp2 = { 2, strdup("Bob"), 87.0 };
     ds_dynamicarray_push_back(arr, tmp2);
     DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
 
-    int size = ds_dynamicarray_size(arr);  // 2
+    int size = ds_dynamicarray_size(arr);    // 2
 
-    ds_dynamicarray_destroy(arr);  // 释放所有元素和容器
+    ds_dynamicarray_destroy(arr);            // 自动释放所有元素和容器
     return 0;
 }
 ```
 
-> **注意：调用者负责清理传入的原始数据**
+> **注意：调用者负责清理传入的原始数据。**
 >
-> 容器在 insert / set / push 时深拷贝传入的数据，**原始数据的所有权仍属于调用者**。
-> 如果元素类型含堆字段（如 `strdup` 产生的 `char *name`），调用者须在操作完成后
-> 调用 `DESTROY_ELEMENT` 清理自身持有的副本。容器不会自动释放调用者传入的堆资源。
+> 容器在 `push` / `insert` / `set` 时通过 `CLONE_ELEMENT` 深拷贝传入的数据。原始数据的所有权仍属于调用者——如果元素类型含堆字段（如 `strdup` 产生的 `char *`），调用者须在操作完成后调用 `DESTROY_ELEMENT` 清理自身持有的副本。容器不会释放调用者传入的堆资源。
 >
-> 如果元素类型仅含标量字段（int、double 等），直接传入字面量即可，无需清理。
+> 如果元素类型仅含标量字段，直接传入字面量即可，无需清理。
 
-### 3. 编译
+### 5. 编译
 
-无需构建系统，直接用任意 C 编译器编译：
+无需构建系统，直接将需要的 `.c` 文件加入编译：
 
 ```bash
-# 编译单个数据结构及其示例
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c
 
-# 编译组合测试项目
-gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test_project/main.c
+# 多容器混用
+gcc -o myapp myapp.c \
+    DynamicArray/ds_dynamicarray.c \
+    HashTable/ds_hashtable.c \
+    String/ds_string.c
 ```
 
-所有数据结构互相独立——只编译你需要的 `.c` 文件即可。
-
-> **进阶：同一容器、多种类型？** 如果你需要在同一个程序里使用同一容器的多种元素类型（比如 `DynamicArray<Student>` 和 `DynamicArray<Course>`），请参考[多类型支持（代码生成器）](#多类型支持代码生成器)章节。
+所有容器互相独立——只编译你需要的 `.c` 文件即可。
 
 ---
 
 ## 多类型支持（代码生成器）
 
-### 设计动机
+### 为什么需要代码生成器
 
-`_type.h` 中的宏是全局的——一个编译单元内只能定义一种 `ds_dynamicarray_type`。如果你需要一个存 `Student` 的动态数组和一个存 `Course` 的动态数组，直接 `#include` 同一容器的头文件两次会因类型名和宏名冲突而无法编译。
+`ds_xxx_type.h` 中的宏是全局的——一个编译单元内只能定义一种 `ds_dynamicarray_type`。如果你需要在一个程序里同时使用 `DynamicArray<Student>` 和 `DynamicArray<Course>`，直接多次 `#include` 会因类型名和宏名冲突而无法编译。
 
-这个问题是 C 语言宏泛型的固有限制——并非本库的设计缺陷。**代码生成器**就是为突破这个限制而设计的。
+这是 C 语言宏泛型的固有限制。代码生成器通过标识符批量重命名来突破这个限制。
 
-### 使用方法
-
-每个容器目录下都有一个 `generate.py`（PriorityQueue 有 `generate_max.py` 和 `generate_min.py` 两个）。它读取母版三件套（`_type.h`、`.h`、`.c`），通过标识符批量重命名，生成三份带后缀的独立副本。母版文件不受任何影响。
-
-**使用流程：**
+### 使用流程
 
 ```bash
-# 1. 编辑母版 ds_dynamicarray_type.h，定义 Student 类型
-# 2. 运行脚本，传入后缀名
+# 1. 在母版 ds_dynamicarray_type.h 中定义 Student 类型（同上节）
+# 2. 运行脚本
 cd DynamicArray
-python generate.py student    # 生成 ds_dynamicarray_student_type.h / .h / .c
+python generate.py student     # 生成 ds_dynamicarray_student_type.h / .h / .c
 
-# 3. 修改 _type.h，定义 Course 类型，再生成一份
-python generate.py course     # 生成 ds_dynamicarray_course_type.h / .h / .c
+# 3. 修改 _type.h 为 Course 类型，再生成一份
+python generate.py course      # 生成 ds_dynamicarray_course_type.h / .h / .c
 ```
 
-**在代码中同时使用：**
+### 在代码中使用
 
 ```c
 #include "ds_dynamicarray_student.h"
 #include "ds_dynamicarray_course.h"
 
 int main() {
-    // 学生数组
+    // Student 数组
     DS_DynamicArray_Student *roster = ds_dynamicarray_student_create();
-    DS_DYNAMICARRAY_STUDENT_TYPE s = {1, strdup("Alice"), 95.5};
+    DS_DYNAMICARRAY_STUDENT_TYPE s = { 1, strdup("Alice"), 95.5 };
     ds_dynamicarray_student_push_back(roster, s);
     DS_DYNAMICARRAY_STUDENT_DESTROY_ELEMENT(s);
 
-    // 课程数组 —— 完全独立的类型
+    // Course 数组 —— 完全独立的类型
     DS_DynamicArray_Course *courses = ds_dynamicarray_course_create();
-    DS_DYNAMICARRAY_COURSE_TYPE c = {1001, strdup("Math"), 4};
+    DS_DYNAMICARRAY_COURSE_TYPE c = { 1001, strdup("Math"), 4 };
     ds_dynamicarray_course_push_back(courses, c);
     DS_DYNAMICARRAY_COURSE_DESTROY_ELEMENT(c);
 
@@ -239,110 +283,252 @@ int main() {
 }
 ```
 
-编译时同时链接两份生成文件：
-
 ```bash
 gcc -o app main.c ds_dynamicarray_student.c ds_dynamicarray_course.c
 ```
 
-### 替换原理
-
-脚本使用**两趟占位符替换**算法，对所有与类型相关的标识符（类型名、宏名、函数名、结构体名、`static inline` 辅助函数名、include 路径）系统化地加上后缀：
-
-1. **第一趟**：所有 `old` → 占位符 `@@N@@`（按 old 长度降序，长串优先，避免短串先吃掉长串的部分）
-2. **第二趟**：占位符 → `new`（占位符之间互不干扰）
-
-为什么需要占位符？举个例子：`ds_dynamicarray_` → `ds_dynamicarray_student_` 之后，这个新串仍然以 `ds_dynamicarray_` 开头。如果直接做多规则替换，它会被后续规则二次误匹配。占位符不含任何原始标识符片段，彻底隔离了替换规则之间的相互干扰。
-
-后缀可以是任意合法 C 标识符（`student`、`v2`、`configA` 等），算法对所有后缀名安全。
-
-### 各容器生成器差异
-
-不同容器拥有的宏和函数不同，生成器替换的标识符也相应不同：
-
-| 容器 | 脚本 | 主要替换项 |
-|---|---|---|
-| **DynamicArray** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline 函数 |
-| **Stack / Queue** | `generate.py` | DESTROY + CLONE + 2 static inline 函数（最简） |
-| **Deque** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline 函数 |
-| **SinglyLinkedList / DoubleLinkedList** | `generate.py` | DESTROY + CLONE + MATCH + 游标类型 + 3 static inline 函数 |
-| **AVLTree / RedBlackTree** | `generate.py` | DESTROY + CLONE + 5 比较宏 + 游标类型 + 2 static inline 函数 |
-| **SkipList** | `generate.py` | DESTROY + CLONE + 5 比较宏 + 游标类型 |
-| **PriorityQueue (Min/Max)** | `generate_min.py` / `generate_max.py` | DESTROY + CLONE + 5 比较宏（函数已带 `_min`/`_max` 后缀） |
-| **HashTable** | `generate.py` | DESTROY + CLONE + MATCH + MATCH_KEY + HASH + HASH_KEY + 6 static inline 函数（最复杂） |
-| **BPlusTree** | `generate.py` | key/value 独立类型 + 5 比较宏 + 游标类型（无 DESTROY/CLONE） |
-
 ### 单类型场景
 
-如果你不需要在同一个编译单元里对同一种容器使用多种元素类型，**完全忽略 `generate.py` 即可**。原有的"编辑 `_type.h` → 编译 `.c`"流程和之前一模一样，不受任何影响。
+如果不需要在同一编译单元内对同一容器使用多种元素类型，完全忽略 `generate.py` 即可。原有的"编辑 `_type.h` → 编译 `.c`"流程不受任何影响。
 
 ---
 
-### 返回值规范
+## 核心设计理念
 
-| 类别 | 返回值 |
-|---|---|
-| `create` / `clone` | 成功返回指针，失败返回 `NULL` |
-| `destroy` | `void`（允许传入 `NULL`） |
-| 查询（`size`、`capacity`、`is_empty`） | 成功返回非负数，传入 `NULL` 返回 `-1` |
-| 修改（`push`、`insert`、`set`、`erase`...） | 成功返回 `1`，失败返回 `0` |
-| 元素获取（`get`、`find`、`peek`、`pop`） | 成功返回 `1`，失败返回 `0`；元素通过输出参数返回 |
-| 树游标（`search`、`find_min`、`successor`...） | 成功返回游标指针，未找到/遍历结束返回 `NULL` |
+### 宏泛型机制
 
-### 输出参数模式
-
-返回元素的函数使用**二级指针**作为输出参数：
-
-```c
-DS_DYNAMICARRAY_TYPE *data;
-if (ds_dynamicarray_get(array, 0, &data)) {
-    printf("value = %d\n", data->value);
-    data->value = 999;  // 可直接修改
-}
+```
+┌──────────────────────────────┐
+|  ds_xxx_type.h   （用户编辑） |
+|  定义元素 struct  + 三大宏:   |
+|  DESTROY  ← 析构             |
+|  CLONE    ← 拷贝             |
+|  MATCH    ← 查找             |
+└─────────────┬────────────────┘
+              │ #include
+┌─────────────▼────────────────┐
+|  ds_xxx.h       （公有 API）  |
+|  #define DS_XXX_TYPE 为别名   |
+|  所有函数签名使用宏名          |
+└─────────────┬────────────────┘
+              │
+┌─────────────▼────────────────┐
+|  ds_xxx.c       （不改）      |
+|  仅通过宏引用元素类型          |
+|  算法代码与具体类型完全解耦    |
+└──────────────────────────────┘
 ```
 
-### NULL 安全
+与 C++ 模板的 monomorphization 本质相同——都是为每种类型生成独立的类型安全代码。区别在于 C++ 编译器自动完成，本库用 `generate.py` 脚本手动触发。
 
-所有公共函数在访问任何字段前都会检查 `NULL` 指针，传入 `NULL` 容器会返回错误码（`0`、`-1` 或 `NULL`），不会发生段错误。
+### 深拷贝所有权模型
 
-### 深拷贝语义
+所有 `push` / `insert` / `set` / `clone` 操作通过 `CLONE_ELEMENT` 执行深拷贝。容器拥有其内部副本的完整所有权，`destroy` 时自动逐个调用 `DESTROY_ELEMENT`。调用者保有原始数据的所有权——没有"容器可能帮你释放也可能不释放"的模糊地带。
 
-所有 insert、set、clone 操作都通过 `CLONE_ELEMENT` 宏进行深拷贝。容器拥有其内部副本的所有权；调用者保留原始数据的所有权。
+### 两类容器，两类 erase 返回值
+
+#### 数组型（DynamicArray / Deque / Stack / Queue）
+
+数据存储在连续内存中。`erase` / `pop` 返回的指针指向这块内存内部或越界位置，不是独立的堆块。**绝对不能 `free()`。** 下次 `push` / `insert` / `reserve` 时该位置被覆盖，指针随即失效。
+
+```c
+DS_DYNAMICARRAY_TYPE *p;
+ds_dynamicarray_erase(da, 0, &p);
+DS_DYNAMICARRAY_DESTROY_ELEMENT(*p);   // 清理元素内部堆资源（如有）
+// 不能 free(p) —— p 指向数组内部
+```
+
+#### 节点型（SinglyLinkedList / DoubleLinkedList / HashTable）
+
+数据存储在独立 `malloc` 的节点中。`erase` / `pop` 将节点数据浅拷贝到新 `malloc` 的堆块，释放原节点，返回新堆块的指针。**用完必须 `DESTROY_ELEMENT` 再 `free`。**
+
+```c
+DS_HASHTABLE_TYPE *p;
+ds_hashtable_erase(ht, 100, &p);
+DS_HASHTABLE_DESTROY_ELEMENT(*p);   // 先清理元素内部堆资源
+free(p);                            // 再释放元素本身
+```
+
+#### `_and_destroy` 变体
+
+所有 `erase` / `pop` / `dequeue` 均提供 `_and_destroy` 变体，由容器负责清理工作。
+
+#### 树型 cursor
+
+树容器的 cursor（`AVLTreeNode *` 等）直接指向树内部节点——绝对不能 `free`。B+ 树的 cursor 是 `malloc` 的副本——必须 `free`。
+
+### 错误处理
+
+| 返回 | 含义 |
+|:--:|------|
+| `1` | 成功 |
+| `0` | 失败：NULL 参数、越界、空容器、malloc 失败、未找到、重复 key |
+| `-1` | 查询函数（`size` / `capacity` / `is_empty`）收到 NULL 容器 |
+| `NULL` + `judge=1` | `clone` 成功（源为 NULL） |
+| `NULL` + `judge=0` | `clone` 失败（malloc 失败） |
 
 ### 命名规范
 
 ```
-ds_<容器>_<操作>
+ds_<模块>_<操作>[_<变体>]
+
+例: ds_dynamicarray_push_back
+    ds_avltree_insert
+    ds_hashtable_erase_and_destroy
 ```
 
-例如：`ds_dynamicarray_push_back`、`ds_avltree_insert`、`ds_hashtable_find`。
+操作名跨容器尽量统一，具体差异见下章。
+
+---
+
+## API 目录
+
+以下按操作类别列出统一的接口后缀。读者可根据规律自行推断任何容器的对应函数名。
+
+### 说明
+
+表格列头沿用"数据结构一览"中的分类。各简称对应容器如下：
+
+| 简称 | 容器 |
+|------|------|
+| 序列-连续 | DynamicArray, String, Deque |
+| 序列-节点 | SinglyLinkedList, DoubleLinkedList |
+| 序列-受限 | Stack, Queue |
+| 关联-散列 | HashTable |
+| 关联-树 | AVLTree, RedBlackTree, SkipList |
+| 堆 | PriorityQueue |
+| 持久 | BPlusTree |
+
+表格中的 ● = 该类容器全部支持。标记具体容器名（如 `Deque`、`AVL,RB`）表示同类内部存在不对齐情况，不宜统标 ●。
+
+表格不列完整函数签名——统一前缀规则 `ds_<模块>_` 加上后缀即可得到完整函数名。
+
+### 创建与销毁
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 | 算法 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `create` / `destroy` | ● | ● | ● | ● | ● | ● | ● | ● |
+| `build` | | | | | | | | ● |
+
+### 状态查询
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `size` | ● | ● | ● | ● | SkipList | ● | ● |
+| `capacity` | ● | | ● | ● | | ● | |
+| `is_empty` | ● | ● | ● | ● | ● | ● | ● |
+| `height` | | | | | AVL,RB | | |
+| `count` | | | | | AVL,RB | | |
+| `level` | | | | | SkipList | | ● |
+
+### 插入
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `push_back` | ● | ● | Deque | | | | |
+| `push_front` | Deque | ● | Deque | | | | |
+| `push` | | | Stack | | | ● | |
+| `enqueue` | | | Queue | | | | |
+| `insert` | ● | ● | Deque | ● | ● | | ● |
+
+### 删除
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `pop_back` / `_and_destroy` | ● | ● | Deque | | | | |
+| `pop_front` / `_and_destroy` | Deque | ● | Deque | | | | |
+| `pop` / `_and_destroy` | | | Stack | | | ● | |
+| `dequeue` / `_and_destroy` | | | Queue | | | | |
+| `erase` / `_and_destroy` | ● | ● | Deque | ● | | | |
+| `delete` | | | | | ● | | ● |
+
+### 访问
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `get` | ● | ● | Deque | | | | |
+| `set` | ● | ● | Deque | | | | |
+| `peek` | | | Stack | | | ● | |
+| `peek_front` / `peek_back` | | | Queue,Deque | | | | |
+| `node_get_data` | | ● | | | ● | | ● |
+
+### 查找
+
+| 后缀 | 序列-连续 | 序列-节点 | 关联-散列 | 关联-树 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|
+| `find` | ● | ● | ● | | |
+| `search` | | ● | | ● | ● |
+| `find_min` / `find_max` | | | | ● | ● |
+| `successor` / `predecessor` | | | | ● | ● |
+
+### 遍历
+
+| 后缀 | 序列-连续 | 序列-节点 | 关联-散列 | 关联-树 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|
+| `traverse` | ● | ● | ● | SkipList | ● |
+| `begin` / `next` | | ● | | ● | ● |
+| `prev` / `rbegin` | | DoubleLL | | AVL,RB | |
+| `_preorder` / `_inorder` / `_postorder` / `_levelorder` | | | | AVL,RB | |
+| `range_query` | | | | ● | ● |
+
+### 容量管理
+
+| 后缀 | 序列-连续 | 序列-受限 | 关联-散列 | 堆 |
+|------|:--:|:--:|:--:|:--:|
+| `reserve` | ● | ● | ● | ● |
+| `shrink_to_fit` | ● | ● | | ● |
+
+### 克隆与合并
+
+| 后缀 | 序列-连续 | 序列-节点 | 序列-受限 | 关联-散列 | 关联-树 | 堆 | 持久 |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `clone` | ● | ● | ● | ● | ● | ● | ● |
+| `concat` | ● | ● | | | | | |
+
+### 游标操作变体（仅序列-节点）
+
+| 后缀 | 涵盖操作 | 适用 |
+|------|---------|:--:|
+| `_after_cursor` / `_and_destroy` | insert / erase | ● |
+| `_before_cursor` / `_and_destroy` | insert / erase | DoubleLinkedList |
+| `_cursor` / `_and_destroy` | erase | DoubleLinkedList |
+
+### 特化操作
+
+| 后缀 | 适用 | 说明 |
+|------|------|------|
+| `put` | HashTable | 插入或覆盖（键存在时覆盖，不存在时插入） |
+| `compare` | String | 字典序比较 |
+| `substring` | String | 提取子串 |
+| `cstr_to_string` / `string_to_cstr` | String | C 字符串互转 |
+| `encode` / `decode` | HuffmanCoding | 压缩与解压 |
 
 ---
 
 ## 进阶功能
 
-### 游标迭代（树 & 链表）
+### 游标迭代（树与链表）
 
-树和链表提供不透明游标类型，避免索引带来的额外开销：
+树和链表提供不透明游标类型，避免索引带来的额外遍历开销：
 
 ```c
 AVLTreeNode *cursor = ds_avltree_find_min(tree);
 while (cursor != NULL) {
     DS_AVLTREE_TYPE *data;
     ds_avltree_node_get_data(cursor, &data);
-    printf("key=%d\n", data->key);
-    cursor = ds_avltree_successor(tree, cursor);
+    printf("key = %d\n", data->key);
+    cursor = ds_avltree_successor(cursor);
 }
 ```
 
 ### 遍历回调
 
-支持前序、中序、后序、层序四种遍历：
+树容器支持前序、中序、后序、层序四种遍历；链表和哈希表支持单向遍历：
 
 ```c
 void print_value(DS_AVLTREE_TYPE *value, void *user_data) {
     (void)user_data;
-    printf("key=%d, value=%d\n", value->key, value->value);
+    printf("key = %d, value = %d\n", value->key, value->value);
 }
 ds_avltree_traverse_inorder_value(tree, NULL, print_value);
 ```
@@ -351,147 +537,136 @@ ds_avltree_traverse_inorder_value(tree, NULL, print_value);
 
 ```c
 ds_avltree_range_query(tree,
-    (DS_AVLTREE_TYPE){.key = 30},
-    (DS_AVLTREE_TYPE){.key = 70},
+    (DS_AVLTREE_TYPE){ .key = 30 },
+    (DS_AVLTREE_TYPE){ .key = 70 },
     NULL, visit_callback);
-```
-
-### 容量管理（数组类）
-
-```c
-ds_dynamicarray_reserve(array, 1000);   // 预留空间，避免反复扩容
-ds_dynamicarray_shrink_to_fit(array);   // 回收多余容量
 ```
 
 ### Insert 与 Put 的区别（哈希表）
 
 ```c
-ds_hashtable_insert(ht, value);  // 键已存在时拒绝，返回 0
-ds_hashtable_put(ht, value);     // 键已存在时覆盖，不存在则插入
+ds_hashtable_insert(ht, value);   // 键已存在时拒绝，返回 0
+ds_hashtable_put(ht, value);      // 键已存在时覆盖，否则插入
 ```
 
----
+### 容器嵌套使用（test_project）
 
-## 两类容器，两种 erase 返回值约定
-
-本库的容器分为两类，它们的 `erase` / `pop` 返回值的生命周期不同：
-
-### 数组类 — DynamicArray、Deque、Stack、Queue
-
-数据存储在连续内存中。`erase` 返回的指针**直接指向这块内存内部**，不是独立堆块。下次 `push` / `insert` 时该位置会被覆盖，指针随即失效。
+`test_project/` 目录展示了两种数据结构的组合使用：用 `DynamicArray` 存储含 `DS_String *` 字段的元素，构建一个学生成绩管理的综合示例。
 
 ```c
-DS_DYNAMICARRAY_TYPE *data;
-ds_dynamicarray_erase(da, 0, &data);
+DS_DynamicArray *roster = ds_dynamicarray_create();
 
-DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // 清理元素内部的堆资源（如有）
-// ⚠ 不能 free(data) —— 它指向数组内部
+DS_String *name1 = ds_cstr_to_string("Alice");
+ds_dynamicarray_push_back(roster,
+    (DS_DYNAMICARRAY_TYPE){ .name = name1, .id = 2025001, .score = 95 });
+
+DS_String *name2 = ds_cstr_to_string("Bob");
+ds_dynamicarray_push_back(roster,
+    (DS_DYNAMICARRAY_TYPE){ .name = name2, .id = 2025002, .score = 87 });
+
+ds_dynamicarray_destroy(roster);   // 递归销毁嵌套的 DS_String
 ```
 
-### 节点类 — SinglyLinkedList、DoubleLinkedList、HashTable
-
-数据存储在独立 `malloc` 的节点中。`erase` 会将节点内的数据**浅拷贝到一个新 `malloc` 的堆块**，释放原节点，然后把新堆块的指针返回给你。**你用完必须手动 `free(data)`。**
-
-```c
-DS_HASHTABLE_TYPE *data;
-ds_hashtable_erase(ht, 100, &data);
-
-DS_HASHTABLE_DESTROY_ELEMENT(*data);  // 清理元素内部的堆资源（如有）
-free(data);                           // ⚠ 必须 free —— 它是 malloc 分配的新堆块
-```
-
-### `_and_destroy` 变体
-
-如需自动清理，可使用 `_and_destroy` 变体，容器负责完成 **DESTROY_ELEMENT + free**（节点类）的全部工作：
-
-```c
-// 数组类自动清理
-ds_dynamicarray_pop_back_and_destroy(array);
-
-// 节点类自动清理
-ds_hashtable_erase_and_destroy(ht, 100);
-```
-
-### 磁盘类 — BPlusTree
-
-B+ 树的 key/value 通过 `fread`/`fwrite` 整页搬运于磁盘与内存之间，不涉及 CLONE/DESTROY 宏。`delete` 直接在磁盘页上移除数据，无需用户手动管理内存。游标（`BPlusTreeNode *`）是 `malloc` 的副本，使用完毕需 `free(cursor)`。
+它演示了当容器的元素包含其他堆资源时，`DESTROY_ELEMENT` / `CLONE_ELEMENT` 宏如何通过调用 `ds_string_destroy` / `ds_string_clone` 正确处理嵌套容器的生命周期。
 
 ---
 
-## 扩容策略
+## 项目结构导读
 
-所有基于数组的容器采用**翻倍扩容**策略：初始容量 0 → 首次插入变为 1 → 之后每次翻倍。哈希表在 `size >= capacity`（负载因子 = 1.0）时触发 rehash，桶数翻倍。
+```
+C-DataStructure/
+│
+├── DynamicArray/                ← 建议从这里开始
+│   ├── ds_dynamicarray_type.h   ← 用户可编辑的元素类型
+│   ├── ds_dynamicarray.h        ← 公有 API
+│   ├── ds_dynamicarray.c        ← 实现
+│   ├── main.c                   ← 演示
+│   └── generate.py              ← 多类型代码生成器
+│
+├── SinglyLinkedList/            ← 然后链表与游标
+├── DoubleLinkedList/
+├── Stack/
+├── Queue/
+├── Deque/
+├── PriorityQueue/               ← 两个独立实现：generate_max.py / generate_min.py
+│
+├── HashTable/
+├── AVLTree/                     ← 进入自平衡树
+├── RedBlackTree/
+├── SkipList/
+├── BPlusTree/                   ← 磁盘存储，最大的模块
+├── String/
+│
+├── Algorithms/
+│   └── HuffmanCoding/
+│
+└── test_project/                ← 综合集成 Demo
+```
+
+### 推荐学习顺序
+
+| 阶段 | 模块 | 目的 |
+|------|------|------|
+| 1 | **DynamicArray** | 理解动态数组、倍增扩容、宏泛型基础 |
+| 2 | **String** | 理解同一动态数组机制在固定类型（`char`）下如何褪去泛型层，获得简洁接口与字符串专属操作 |
+| 3 | **SinglyLinkedList** → **DoubleLinkedList** | 理解指针结构、不透明游标、回调遍历 |
+| 4 | **Stack** → **Queue** → **Deque** | 理解受限接口、循环缓冲区 |
+| 5 | **PriorityQueue** | 理解二叉堆、sift-up / sift-down |
+| 6 | **HashTable** | 理解拉链法、FNV-1a、rehash |
+| 7 | **AVLTree** → **RedBlackTree** | 理解自平衡 BST、旋转与染色 |
+| 8 | **SkipList** | 理解概率数据结构 |
+| 9 | **BPlusTree** | 理解磁盘页格式、分裂与合并、自由链表 |
+| 10 | **HuffmanCoding** | 理解数据结构组合构建算法：最小堆建树、位级编码 |
+| 11 | **test_project** | 理解多容器组合、级联所有权、真实项目结构 |
 
 ---
 
-## 设计取舍
+## 实现与设计考量
 
-- **不用 `void*` 擦除类型。** 泛型通过 `_type.h` 中的宏实现。编译期类型安全，但宏的天然限制是同一编译单元只能注册一种类型——`generate.py` 代码生成器通过标识符重命名解决了这个问题，在保持类型安全的前提下实现了多类型并存。
-- **只靠返回值报告错误。** 不使用 `errno`、`assert` 或 `exit`。所有错误通过返回值体现——无隐藏控制流。
-- **单线程。** 无锁、无原子操作，假设单线程环境。
-- **无构建系统。** 每个数据结构就是一组独立的 `.c`/`.h` 文件——不需要 Makefile 或 CMake。
-- **不透明结构体。** 内部字段对用户隐藏，所有操作均为直接函数调用——无虚表开销。
+### 宏的可移植性
 
----
-
-## 编写可移植的宏
-
-`_type.h` 中默认使用 **`static inline` 函数**来实现克隆和销毁逻辑，再由宏调用。这种写法兼容所有 C99 编译器（GCC、Clang、MSVC），且支持断点调试。
-
-默认元素类型仅含标量字段（int 等），无需修改。当你需要增加堆分配字段时，只需在 `_type.h` 中修改结构体定义、编写自己的 clone / destroy 函数，并更新宏调用。
+`ds_xxx_type.h` 中默认使用 `static inline` 函数实现克隆和销毁逻辑，再由宏调用。兼容所有 C99 编译器（GCC、Clang、MSVC），且支持断点调试。
 
 要点：
 
-- **`static`** 避免 `_type.h` 被多个 `.c` 文件包含时出现符号重复定义。
+- **`static`** 避免被多个 `.c` 文件包含时出现符号重复定义。
 - **`inline`** 允许编译器消除调用开销。
-- 宏的**调用语法不变**，所有 `.c` / `.h` 实现文件无需任何修改。
-- 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**（若使用代码生成器，同样只需编辑母版 `_type.h`，再运行脚本——母版仍然是唯一需要编辑的 C 文件。）
-- **磁盘类容器除外**：B+ 树的 key/value 为定长 POD 类型，通过 `fread`/`fwrite` 整页读写磁盘，不使用 CLONE/DESTROY 宏。
+- 宏的调用语法保持不变——修改 `_type.h` 后，所有 `.c` / `.h` 实现文件无需任何改动。
+- 核心不变式：**`_type.h` 是用户唯一需要修改的文件。**（若使用代码生成器，同样只需编辑母版 `_type.h`，再运行脚本。）
+- 磁盘类容器例外：B+ 树的 key/value 为定长 POD 类型，通过 `fread` / `fwrite` 整页读写，不使用 CLONE/DESTROY 宏。
 
----
+### 扩容策略
 
-## test_project
+所有基于数组的容器采用翻倍扩容策略：初始容量 0 → 首次插入变为 1 → 之后每次翻倍。哈希表在 `size >= capacity`（负载因子 1.0）时触发 rehash，桶数翻倍。
 
-`test_project/` 目录展示了两种数据结构的组合使用：用 `DynamicArray` 存储 `String` 元素，构建一个简易学生成绩管理系统：
+### 设计取舍
 
-```c
-// test_project/main.c — 摘录
-DS_DynamicArray *roster = ds_dynamicarray_create();
-
-// 添加学生：String 保存姓名，int 保存成绩
-DS_String *name1 = ds_cstr_to_string("Alice");
-ds_dynamicarray_push_back(roster, (DS_DYNAMICARRAY_TYPE){.name = name1, .grade = 95});
-
-DS_String *name2 = ds_cstr_to_string("Bob");
-ds_dynamicarray_push_back(roster, (DS_DYNAMICARRAY_TYPE){.name = name2, .grade = 87});
-
-// 查找学生
-DS_DYNAMICARRAY_TYPE *entry;
-if (ds_dynamicarray_find(roster, "Alice", &entry)) {
-    printf("%s: %d\n", ds_string_to_cstr(entry->name), entry->grade);
-}
-
-ds_dynamicarray_destroy(roster);  // 递归销毁嵌套的 String
-```
-
-它展示了当 `DynamicArray` 的元素包含 `DS_String *` 时，`DESTROY_ELEMENT` / `CLONE_ELEMENT` 宏应该如何正确处理嵌套容器的生命周期——调用 `ds_string_destroy` 和 `ds_string_clone`。
+- **不用 `void*` 擦除类型。** 泛型通过 `_type.h` 中的宏实现，编译期类型安全。宏的天然限制（一编译单元一种类型）由 `generate.py` 代码生成器解决。
+- **只靠返回值报告错误。** 不使用 `errno`、`assert` 或 `exit`。所有错误通过返回值体现——无隐藏控制流。
+- **单线程。** 无锁、无原子操作，假设单线程环境。
+- **无构建系统。** 每个数据结构就是一组独立的 `.c` / `.h` 文件，不需要 Makefile 或 CMake。
+- **不透明结构体。** 内部字段对用户隐藏，所有操作均为直接函数调用——无虚表开销。
 
 ---
 
 ## 与其他方案对比
 
-| 方案 | 类型安全 | 内存安全 | 上手难度 | 适用场景 |
-|---|---|---|---|---|
-| **本库** | 编译期（宏） | 深拷贝所有权模型 | 中等（需理解宏系统；多类型场景需运行一次 Python 脚本） | 需要可读、可复用的泛型容器 |
+| 方案 | 类型安全 | 所有权清晰度 | 上手难度 | 适用场景 |
+|------|:--:|:--:|:--:|------|
+| **本库** | 编译期（宏） | 深拷贝模型，边界明确 | 中等 | 学习数据结构与 C 泛型设计；小型项目可参考实现 |
+| `C++ STL` | 编译期（模板） | RAII | 低（如果会用 C++） | 能用 C++ 编译器的场景 |
+| `glib` / `libuv` 等 | 无（void* + 强转） | 易出错（"谁释放？"无标准答案） | 低 | 快速内部原型 |
+| `klib` / `uthash` | 宏（纯头文件） | 因库而异，无统一约定 | 中等 | 极简、只需头文件、不介意宏调试的场景 |
 | 手写裸结构体 | 编译期 | 手动管理 | 入门低，做对难 | 一次性、简单场景 |
-| `void*` + 函数指针 | 无（运行时强转） | 易出错（"谁来释放？"） | 低 | 快速内部原型 |
-| C++ STL | 编译期（模板） | RAII | 低（如果会 C++） | 能用 C++ 编译器的场景 |
-| `klib` / `uthash` | 宏（纯头文件） | 各有差异 | 中等 | 极简、只要头文件的场景 |
 
-**简言之：** 如果你在写 C、想要类型安全的泛型容器、在意清晰的所有权语义、并且愿意为每个数据结构配置一个 `_type.h` 文件，那么这个库就是为你准备的。
+**简言之：** 如果你在写 C、想通过可读的源码理解泛型容器与数据结构的设计、在意清晰的所有权语义，并且愿意为每个容器配置一个 `_type.h` 文件——那么这个库就是为你准备的。
 
 ---
 
 ## 许可
 
 本项目基于 MIT 许可证发布，详见 [LICENSE](LICENSE) 文件。
+
+---
+
+*如果你读完这份 README 想要深入代码细节，任何一个模块的 `_type.h` 和 `.h` 文件都是最好的入口——前者包含类型定制示例，后者包含详尽的函数级使用文档和所有权语义说明。*

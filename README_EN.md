@@ -1,47 +1,27 @@
-# C Data Structure Library
+# C_DataStructure
 
-A learning-oriented yet fully functional C data structure library. Type-safe generic containers via compile-time macros, deep-copy ownership model, and opaque pointer APIs. Includes a Python script code generator for multi-type support in a single compilation unit, a byte-level Huffman compression algorithm, and a disk-page B+ tree.
+A teaching-grade data structure library in pure C, modeled after the C++ STL.
 
-[:cn: 中文版本](README_CN.md)
+C has no templates, no RAII, and no iterators — the three pillars of the STL. This library provides a pure-C alternative for each:
 
----
+- **Macro generics + code generator** replaces templates, delivering compile-time monomorphization.
+- **`DESTROY_ELEMENT` / `CLONE_ELEMENT` macros** replace destructors and copy constructors; the container manages element lifetimes automatically.
+- **Opaque cursors + index access** replaces iterators.
 
-## Quick Try
-
-```bash
-git clone https://github.com/zuozhewangyiping/C_DataStructure.git
-cd C_DataStructure
-
-# Linux / macOS
-gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
-
-# Windows (CMD / PowerShell)
-gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && demo
-
-# Output: is_empty: 1, size: 0, capacity: 0
-# ...（more output follows）
-```
-
-No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or later.**
+On this foundation, 14 containers share a uniform naming convention — `push_back` / `pop_back` / `insert` / `erase` / `find` and more. A disk-page B+ tree and a Huffman compression algorithm are also included.
 
 ---
 
 ## Table of Contents
 
 - [Data Structures at a Glance](#data-structures-at-a-glance)
-  - [In-Memory Containers](#in-memory-containers)
-  - [Algorithms](#algorithms)
-  - [Disk-Based](#disk-based)
-- [Algorithms](#algorithms)
 - [Quick Start](#quick-start)
 - [Multi-Type Support (Code Generator)](#multi-type-support-code-generator)
-- [API Conventions](#api-conventions)
+- [Core Design Philosophy](#core-design-philosophy)
+- [API Directory](#api-directory)
 - [Advanced Features](#advanced-features)
-- [Two Container Families, Two Erase Conventions](#two-container-families-two-erase-conventions)
-- [Capacity Growth](#capacity-growth)
-- [Design Trade-offs](#design-trade-offs)
-- [Writing Portable Macros](#writing-portable-macros)
-- [test_project](#test_project)
+- [Project Structure Guide](#project-structure-guide)
+- [Implementation & Design Considerations](#implementation--design-considerations)
 - [Comparison with Alternatives](#comparison-with-alternatives)
 - [License](#license)
 
@@ -49,83 +29,151 @@ No dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or la
 
 ## Data Structures at a Glance
 
-### In-Memory Containers
+14 data structures and 1 algorithm, organized into four tiers:
 
-#### Array-Based (Contiguous Storage)
+### 1. Sequential
 
-| Structure | Insert | Delete | Lookup | Notes |
-|---|---|---|---|---|
-| **DynamicArray** | O(1)* / O(n) | O(1)* / O(n) | O(1) / O(n) | Generic resizable array (C++ `std::vector` equivalent) |
-| **Stack** | O(1)* | O(1) | O(1) peek | LIFO, built on dynamic array |
-| **Deque** | O(1)* | O(1) | O(1) | Double-ended queue, circular buffer |
-| **Queue** | O(1)* | O(1) | O(1) peek | FIFO, circular buffer |
-| **String** | O(1)* / O(n) | O(n) | O(1) | Char-oriented dynamic array with string ops |
+Elements are ordered by insertion. Traversal is supported.
 
-> O(1)* = amortized O(1). Lookup shows both indexed O(1) and search O(n).
+#### Contiguous Storage
 
-#### Node-Based (Linked Storage)
+| Container | Role | Insert | Delete | Access | Notes |
+|------|------|:--:|:--:|:--:|------|
+| **DynamicArray** | Generic dynamic array | O(1)\* / O(n) | O(1)\* / O(n) | O(1) index | Analogous to C++ `std::vector` |
+| **String** | Dynamic string | O(1)\* / O(n) | O(n) | O(1) index | Compare, substring, concat, C-string interop |
+| **Deque** | Double-ended queue | O(1)\* | O(1) | O(1) index | Circular buffer, random-position insert/erase |
 
-| Structure | Insert | Delete | Lookup | Notes |
-|---|---|---|---|---|
-| **SinglyLinkedList** | O(1) head / O(n) | O(1) head / O(n) | O(n) | Index-based and cursor-based ops |
-| **DoubleLinkedList** | O(1) head+tail / O(n) | O(1) head+tail / O(n) | O(n) | Bidirectional traversal |
-| **SkipList** | O(log n) prob. | O(log n) prob. | O(log n) prob. | Probabilistically balanced, multi-level index, cursor ops |
+> O(1)\* = amortized O(1).
 
-#### Tree-Based (Self-Balancing BST)
+#### Linked Storage
 
-| Structure | Insert | Delete | Search | Min/Max | Traverse | Notes |
-|---|---|---|---|---|---|---|
-| **AVLTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | LL/LR/RL/RR rotations |
-| **RedBlackTree** | O(log n) | O(log n) | O(log n) | O(log n) | O(n) | Standard fixup rules |
+| Container | Role | Insert | Delete | Access | Notes |
+|------|------|:--:|:--:|:--:|------|
+| **SinglyLinkedList** | Singly linked list | O(1) head / O(n) | O(1) head / O(n) | O(n) index | Analogous to C++ `std::forward_list` |
+| **DoubleLinkedList** | Doubly linked list | O(1) head+tail / O(n) | O(1) head+tail / O(n) | O(n) index | Analogous to C++ `std::list`, bidirectional cursor |
 
-#### Specialized
+#### Restricted Sequences
 
-| Structure | Insert | Delete | Search | Peek | Notes |
-|---|---|---|---|---|---|
-| **PriorityQueue (Min)** | O(log n) | O(log n) pop | — | O(1) | Binary min-heap |
-| **PriorityQueue (Max)** | O(log n) | O(log n) pop | — | O(1) | Binary max-heap |
-| **HashTable** | O(1) avg | O(1) avg | O(1) avg | — | Separate chaining, FNV-1a hash |
+| Container | Role | Core Operations | Notes |
+|------|------|------|------|
+| **Stack** | LIFO stack | O(1) push / pop / peek | Built on dynamic array |
+| **Queue** | FIFO queue | O(1) enqueue / dequeue | Circular buffer |
 
-### Algorithms
+### 2. Associative
+
+Elements are organized and looked up by key, not insertion order.
+
+#### Hash-Based
+
+| Container | Role | Avg. Lookup | Notes |
+|------|------|:--:|------|
+| **HashTable** | Hash table | O(1) | Separate chaining, FNV-1a hash. `insert` rejects duplicates; `put` overwrites |
+
+#### Ordered Trees
+
+| Container | Role | Lookup | Insert | Delete | Notes |
+|------|------|:--:|:--:|:--:|------|
+| **AVLTree** | Strictly balanced BST | O(log n) | O(log n) | O(log n) | LL/LR/RL/RR rotations, height difference ≤1 |
+| **RedBlackTree** | Red-black tree | O(log n) | O(log n) | O(log n) | ≤2 rotations on insert; deletion is more involved |
+
+#### Probabilistic
+
+| Container | Role | Expected Lookup | Notes |
+|------|------|:--:|------|
+| **SkipList** | Skip list | O(log n) | 32-level probabilistic balance, concise implementation |
+
+### 3. Heap
+
+Only the extreme value matters; global ordering is irrelevant.
+
+| Container | Role | push | pop | peek | Notes |
+|------|------|:--:|:--:|:--:|------|
+| **PriorityQueue (Max)** | Max-heap | O(log n) | O(log n) | O(1) | Binary heap |
+| **PriorityQueue (Min)** | Min-heap | O(log n) | O(log n) | O(1) | Independent implementation; comparison direction inverted |
+
+### 4. Persistent
+
+Data is persisted to disk (pages are read from and written to disk via `fread` / `fwrite` at runtime).
+
+| Container | Role | Lookup | Insert | Delete | Notes |
+|------|------|:--:|:--:|:--:|------|
+| **BPlusTree** | Disk B+ tree | O(log n) | O(log n) | O(log n) | 4 KB pages, file persistence, page recycling |
+
+### 5. Algorithm
 
 | Algorithm | Notes |
-|---|---|
-| **HuffmanCoding** | Byte-level Huffman compression with 8-bit packed output, internal min-heap tree construction, full encode/decode round-trip |
-
-### Disk-Based (Persistent Storage)
-
-| Structure | Insert | Delete | Search | Notes |
-|---|---|---|---|---|
-| **BPlusTree** | O(log n) | O(log n) | O(log n) | 4KB-page B+ tree, data persisted to file, key/value read/written via fread/fwrite |
-
----
+|------|------|
+| **HuffmanCoding** | Huffman compression — min-heap tree construction, 8-bit packing, full encode/decode round-trip |
 
 ## Quick Start
 
-### 1. Configure Your Element Type
+### 1. Zero-Friction Demo
 
-Edit the `_type.h` file for your chosen data structure. This is the **only file you need to modify**:
+```bash
+git clone https://github.com/zuozhewangyiping/C_DataStructure.git
+cd C_DataStructure
+gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c && ./demo
+```
+
+Zero dependencies. No build system. Just `.c` and `.h` files. **Requires C99 or later.**
+
+### 2. Write Your First Program
+
+```c
+// main.c
+#include <stdio.h>
+#include "DynamicArray/ds_dynamicarray.h"
+
+int main(void)
+{
+    DS_DynamicArray *da = ds_dynamicarray_create();
+
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){10});
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){20});
+    ds_dynamicarray_push_back(da, (ds_dynamicarray_type){30});
+
+    printf("size: %d\n", ds_dynamicarray_size(da));
+
+    DS_DYNAMICARRAY_TYPE *p;
+    for (int i = 0; i < ds_dynamicarray_size(da); i++) {
+        ds_dynamicarray_get(da, i, &p);
+        printf("da[%d] = %d\n", i, p->data);
+    }
+
+    ds_dynamicarray_destroy(da);
+    return 0;
+}
+```
+
+```bash
+gcc -o main main.c DynamicArray/ds_dynamicarray.c && ./main
+```
+
+The default element type is `{ int data }`. Up to this point, you don't need to understand any of the generic machinery.
+
+### 3. Configure Your Element Type
+
+If plain `int` isn't enough, edit the container's `ds_xxx_type.h`. This is the only file you need to modify:
 
 ```c
 // ds_dynamicarray_type.h
 typedef struct {
-    int id;
-    char *name;       // heap-allocated field
+    int   id;
+    char *name;        // heap-allocated field
     double score;
 } ds_dynamicarray_type;
 
-static inline void destroy_element(ds_dynamicarray_type *e)
-{
+// Destroy: free name
+static inline void destroy_element(ds_dynamicarray_type *e) {
     free(e->name);
     e->name = NULL;
 }
 #define DS_DYNAMICARRAY_DESTROY_ELEMENT(e) destroy_element(&(e))
 
-// Write your clone function, then have the macro call it
+// Clone: deep-copy name
 static inline ds_dynamicarray_type
-clone_element(const ds_dynamicarray_type *src, int *judge)
-{
-    ds_dynamicarray_type copy = {.id = src->id, .score = src->score, .name = NULL};
+clone_element(const ds_dynamicarray_type *src, int *judge) {
+    ds_dynamicarray_type copy = { .id = src->id, .score = src->score, .name = NULL };
     if (src->name) {
         copy.name = strdup(src->name);
         if (!copy.name) { *judge = 0; return copy; }
@@ -134,15 +182,16 @@ clone_element(const ds_dynamicarray_type *src, int *judge)
 }
 #define DS_DYNAMICARRAY_CLONE_ELEMENT(e, j) clone_element(&(e), j)
 
+// Match: find by id
 #define DS_DYNAMICARRAY_MATCH_TYPE int
-static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_MATCH_TYPE target)
-{
+static inline int match_element(const ds_dynamicarray_type *e,
+                                DS_DYNAMICARRAY_MATCH_TYPE target) {
     return e->id == target ? 1 : 0;
 }
 #define DS_DYNAMICARRAY_MATCH(e, t) match_element(&(e), t)
 ```
-	
-### 2. Use the Data Structure
+
+### 4. Use the Container
 
 ```c
 #include "ds_dynamicarray.h"
@@ -150,72 +199,66 @@ static inline int match_element(const ds_dynamicarray_type *e, DS_DYNAMICARRAY_M
 int main() {
     DS_DynamicArray *arr = ds_dynamicarray_create();
 
-    DS_DYNAMICARRAY_TYPE tmp1 = {1, strdup("Alice"), 95.5};
+    DS_DYNAMICARRAY_TYPE tmp1 = { 1, strdup("Alice"), 95.5 };
     ds_dynamicarray_push_back(arr, tmp1);
-    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);  // container owns a deep copy now
+    DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp1);   // container deep-copied it; free your original
 
-    DS_DYNAMICARRAY_TYPE tmp2 = {2, strdup("Bob"), 87.0};
+    DS_DYNAMICARRAY_TYPE tmp2 = { 2, strdup("Bob"), 87.0 };
     ds_dynamicarray_push_back(arr, tmp2);
     DS_DYNAMICARRAY_DESTROY_ELEMENT(tmp2);
 
-    int size = ds_dynamicarray_size(arr);  // 2
+    int size = ds_dynamicarray_size(arr);    // 2
 
-    ds_dynamicarray_destroy(arr);  // frees all elements + container
+    ds_dynamicarray_destroy(arr);            // frees all elements and the container
     return 0;
 }
 ```
 
-> **IMPORTANT: Caller Retains Ownership of Original Data**
+> **IMPORTANT: Caller retains ownership of the original data.**
 >
-> The container deep-copies data on insert / set / push. **Ownership of the original
-> remains with the caller.** If the element type contains heap fields (e.g. `char *name`
-> from `strdup`), the caller must call `DESTROY_ELEMENT` on the local copy after the
-> operation. The container will not free heap resources owned by the caller.
+> The container deep-copies data on `push` / `insert` / `set` via `CLONE_ELEMENT`. Ownership of the original remains with the caller — if the element type contains heap fields (e.g. `char *` from `strdup`), the caller must call `DESTROY_ELEMENT` on the local copy after the operation. The container will not free heap resources owned by the caller.
 >
-> If the element has only scalar fields (int, double, etc.), a compound literal such as
-> `(type){10}` may be passed directly — no cleanup is required.
+> If the element has only scalar fields, a compound literal may be passed directly — no cleanup is required.
 
-### 3. Compile
+### 5. Compile
+
+No build system needed. Just list the `.c` files you use:
 
 ```bash
-# Compile a single data structure with its demo
 gcc -o demo DynamicArray/ds_dynamicarray.c DynamicArray/main.c
 
-# Compile the integration test project
-gcc -o test_project test_project/ds_dynamicarray.c test_project/ds_string.c test_project/main.c
+# Multiple containers
+gcc -o myapp myapp.c \
+    DynamicArray/ds_dynamicarray.c \
+    HashTable/ds_hashtable.c \
+    String/ds_string.c
 ```
 
-All data structures are independent — compile only the `.c` files you need.
-
-> **Advanced: one container, multiple types?** If you need several instantiations of the same container in one program (e.g. `DynamicArray<Student>` and `DynamicArray<Course>`), see [Multi-Type Support (Code Generator)](#multi-type-support-code-generator).
+All containers are independent — compile only the `.c` files you need.
 
 ---
 
 ## Multi-Type Support (Code Generator)
 
-### Motivation
+### Why a Code Generator
 
-The macros in `_type.h` are global — you can only define one `ds_dynamicarray_type` per compilation unit. If you need one dynamic array of `Student` and another of `Course`, including the same container header twice will fail because type names and macro names collide.
+The macros in `ds_xxx_type.h` are global — you can only define one `ds_dynamicarray_type` per compilation unit. If you need both `DynamicArray<Student>` and `DynamicArray<Course>` in the same program, including the header multiple times will fail because type names and macro names collide.
 
-This is an inherent limitation of macro-based generics in C, not a design flaw. The **code generator** exists to overcome it.
+This is an inherent limitation of macro-based generics in C. The code generator overcomes it through systematic identifier renaming.
 
-### How to Use
-
-Every container directory contains a `generate.py` (PriorityQueue has both `generate_max.py` and `generate_min.py`). It reads the three mother files (`_type.h`, `.h`, `.c`), systematically renames all type-related identifiers, and emits three independent copies with a suffix. The mother files are never touched.
-
-**Workflow:**
+### Workflow
 
 ```bash
-# 1. Edit the mother ds_dynamicarray_type.h to define your Student type
-# 2. Run the script with a suffix
+# 1. Define the Student type in the mother ds_dynamicarray_type.h (as in the previous section)
+# 2. Run the script
 cd DynamicArray
-python generate.py student    # produces ds_dynamicarray_student_type.h / .h / .c
+python generate.py student     # produces ds_dynamicarray_student_type.h / .h / .c
 
-# 3. Edit _type.h again for Course, then generate another copy
-python generate.py course     # produces ds_dynamicarray_course_type.h / .h / .c
+# 3. Edit _type.h for Course, then generate another copy
+python generate.py course      # produces ds_dynamicarray_course_type.h / .h / .c
 ```
 
-**Using both types in the same program:**
+### Using Both Types
 
 ```c
 #include "ds_dynamicarray_student.h"
@@ -224,13 +267,13 @@ python generate.py course     # produces ds_dynamicarray_course_type.h / .h / .c
 int main() {
     // Student array
     DS_DynamicArray_Student *roster = ds_dynamicarray_student_create();
-    DS_DYNAMICARRAY_STUDENT_TYPE s = {1, strdup("Alice"), 95.5};
+    DS_DYNAMICARRAY_STUDENT_TYPE s = { 1, strdup("Alice"), 95.5 };
     ds_dynamicarray_student_push_back(roster, s);
     DS_DYNAMICARRAY_STUDENT_DESTROY_ELEMENT(s);
 
     // Course array — a completely independent type
     DS_DynamicArray_Course *courses = ds_dynamicarray_course_create();
-    DS_DYNAMICARRAY_COURSE_TYPE c = {1001, strdup("Math"), 4};
+    DS_DYNAMICARRAY_COURSE_TYPE c = { 1001, strdup("Math"), 4 };
     ds_dynamicarray_course_push_back(courses, c);
     DS_DYNAMICARRAY_COURSE_DESTROY_ELEMENT(c);
 
@@ -240,259 +283,394 @@ int main() {
 }
 ```
 
-Compile with both generated files:
-
 ```bash
 gcc -o app main.c ds_dynamicarray_student.c ds_dynamicarray_course.c
 ```
 
-### How It Works
-
-The script uses a **two-pass placeholder replacement** algorithm that systematically adds the suffix to every type-related identifier (type names, macro names, function names, struct names, `static inline` helper names, and include paths):
-
-1. **Pass 1:** every `old` → placeholder `@@N@@` (sorted by length descending — longest strings first, so shorter ones don't eat parts of longer ones)
-2. **Pass 2:** placeholder → `new` (placeholders don't interfere with each other)
-
-Why placeholders? Consider `ds_dynamicarray_` → `ds_dynamicarray_student_`. The result still starts with `ds_dynamicarray_`. Without placeholders, subsequent rules could match it again. Placeholders contain no original identifier fragments, completely isolating replacement rules from each other.
-
-The suffix can be any valid C identifier (`student`, `v2`, `configA`, etc.) — the algorithm is safe for all of them.
-
-### Generator Differences by Container
-
-Each container has a different set of macros and functions, so the generator replaces different identifiers:
-
-| Container | Script | Key Replacements |
-|---|---|---|
-| **DynamicArray** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline functions |
-| **Stack / Queue** | `generate.py` | DESTROY + CLONE + 2 static inline functions (simplest) |
-| **Deque** | `generate.py` | DESTROY + CLONE + MATCH + 3 static inline functions |
-| **SinglyLinkedList / DoubleLinkedList** | `generate.py` | DESTROY + CLONE + MATCH + cursor type + 3 static inline functions |
-| **AVLTree / RedBlackTree** | `generate.py` | DESTROY + CLONE + 5 comparison macros + cursor type + 2 static inline functions |
-| **SkipList** | `generate.py` | DESTROY + CLONE + 5 comparison macros + cursor type |
-| **PriorityQueue (Min/Max)** | `generate_min.py` / `generate_max.py` | DESTROY + CLONE + 5 comparison macros (functions already `_min`/`_max`-suffixed) |
-| **HashTable** | `generate.py` | DESTROY + CLONE + MATCH + MATCH_KEY + HASH + HASH_KEY + 6 static inline functions (most complex) |
-| **BPlusTree** | `generate.py` | Separate key/value types + 5 comparison macros + cursor type (no DESTROY/CLONE) |
-
 ### Single-Type Usage
 
-If you don't need multiple element types for the same container in one compilation unit, **ignore `generate.py` entirely**. The original workflow — edit `_type.h`, compile the `.c` file — works exactly as before.
+If you don't need multiple element types for the same container in one compilation unit, ignore `generate.py` entirely. The original workflow — edit `_type.h`, compile the `.c` file — works exactly as before.
 
 ---
 
-### Return Values
+## Core Design Philosophy
 
-| Category | Returns |
-|---|---|
-| `create` / `clone` | Pointer on success, `NULL` on failure |
-| `destroy` | `void` (safe to pass `NULL`) |
-| Query (`size`, `capacity`, `is_empty`) | Non-negative on success, `-1` for `NULL` input |
-| Mutation (`push`, `insert`, `set`, `erase`...) | `1` on success, `0` on failure |
-| Element retrieval (`get`, `find`, `peek`, `pop`) | `1` on success, `0` on failure; element via output param |
-| Tree cursors (`search`, `find_min`, `successor`...) | Cursor pointer, `NULL` if not found / exhausted |
+### Macro-Based Generics
 
-### Output Parameter Pattern
-
-Functions that return elements use a **pointer-to-pointer** output parameter:
-
-```c
-DS_DYNAMICARRAY_TYPE *data;
-if (ds_dynamicarray_get(array, 0, &data)) {
-    printf("value = %d\n", data->value);
-    data->value = 999;  // can modify in place
-}
+```
+┌──────────────────────────────┐
+│  ds_xxx_type.h   (you edit)  │
+│  Define element struct + 3   │
+│  macros:                     │
+│  DESTROY  ← destructor       │
+│  CLONE    ← copy             │
+│  MATCH    ← lookup           │
+└─────────────┬────────────────┘
+              │ #include
+┌─────────────▼────────────────┐
+│  ds_xxx.h       (public API) │
+│  #define DS_XXX_TYPE alias   │
+│  All function signatures     │
+│  reference macro names       │
+└─────────────┬────────────────┘
+              │
+┌─────────────▼────────────────┐
+│  ds_xxx.c       (untouched)  │
+│  Refer to element type only  │
+│  through macros              │
+│  Algorithms are fully        │
+│  decoupled from types        │
+└──────────────────────────────┘
 ```
 
-### NULL Safety
+This is the same principle as C++ template monomorphization — generating independent, type-safe code for each type. The difference is that C++ compilers do it automatically, whereas this library triggers it manually through `generate.py`.
 
-All public functions handle `NULL` container pointers by returning an error code (`0`, `-1`, or `NULL`). No segfaults.
+### Deep-Copy Ownership Model
 
-### Deep Copy Semantics
+Every `push` / `insert` / `set` / `clone` operation performs a deep copy through `CLONE_ELEMENT`. The container owns its internal copies completely and calls `DESTROY_ELEMENT` on each element when `destroy`ed. The caller retains ownership of the original data — there is no ambiguity about "who frees what."
 
-All insert, set, and clone operations deep-copy elements via `CLONE_ELEMENT`. The container owns its copies; the caller retains ownership of the original data.
+### Two Container Families, Two Erase Conventions
+
+#### Array-Based (DynamicArray / Deque / Stack / Queue)
+
+Data is stored in contiguous memory. Pointers returned by `erase` / `pop` point inside this memory or just past it — they are not independent heap blocks. **Never `free()` them.** The next `push` / `insert` / `reserve` will overwrite the slot and invalidate the pointer.
+
+```c
+DS_DYNAMICARRAY_TYPE *p;
+ds_dynamicarray_erase(da, 0, &p);
+DS_DYNAMICARRAY_DESTROY_ELEMENT(*p);   // clean up heap members inside the element (if any)
+// Do NOT free(p) — p points inside the array
+```
+
+#### Node-Based (SinglyLinkedList / DoubleLinkedList / HashTable)
+
+Data is stored in individually `malloc`'d nodes. `erase` / `pop` shallow-copies the node's data into a newly `malloc`'d block, frees the node, and returns a pointer to the new block. **You must call `DESTROY_ELEMENT` then `free`.**
+
+```c
+DS_HASHTABLE_TYPE *p;
+ds_hashtable_erase(ht, 100, &p);
+DS_HASHTABLE_DESTROY_ELEMENT(*p);   // clean up heap members first
+free(p);                            // then free the element itself
+```
+
+#### `_and_destroy` Variants
+
+Every `erase` / `pop` / `dequeue` has an `_and_destroy` variant that lets the container handle cleanup.
+
+#### Tree Cursors
+
+Tree cursors (`AVLTreeNode *`, etc.) point directly into tree nodes — never `free` them. B+ tree cursors are `malloc`'d copies — you must `free` them.
+
+### Error Handling
+
+| Returns | Meaning |
+|:--:|------|
+| `1` | Success |
+| `0` | Failure: NULL argument, out of bounds, empty container, malloc failure, not found, duplicate key |
+| `-1` | Query function (`size` / `capacity` / `is_empty`) received a NULL container |
+| `NULL` + `judge=1` | `clone` succeeded (source was NULL) |
+| `NULL` + `judge=0` | `clone` failed (malloc failure) |
 
 ### Naming Convention
 
 ```
-ds_<container>_<operation>
+ds_<module>_<operation>[_<variant>]
+
+e.g. ds_dynamicarray_push_back
+     ds_avltree_insert
+     ds_hashtable_erase_and_destroy
 ```
 
-Examples: `ds_dynamicarray_push_back`, `ds_avltree_insert`, `ds_hashtable_find`.
+Operation names are as uniform as possible across containers. For specific differences, see the next chapter.
+
+---
+
+## API Directory
+
+The following tables list unified operation suffixes by category. You can derive the full function name for any container by applying the prefix rule.
+
+### Legend
+
+Column headers follow the classification from "Data Structures at a Glance." Each abbreviation maps to these containers:
+
+| Abbreviation | Containers |
+|------|------|
+| Seq-Contiguous | DynamicArray, String, Deque |
+| Seq-Linked | SinglyLinkedList, DoubleLinkedList |
+| Seq-Restricted | Stack, Queue |
+| Assoc-Hash | HashTable |
+| Assoc-Tree | AVLTree, RedBlackTree, SkipList |
+| Heap | PriorityQueue |
+| Persistent | BPlusTree |
+
+● = supported by all containers in the category. A specific container name (e.g. `Deque`, `AVL,RB`) means the operation is not uniform within the category and cannot be marked ●.
+
+The tables list suffixes only, not full signatures. Apply the prefix `ds_<module>_` to obtain the complete function name.
+
+### Create & Destroy
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent | Algorithm |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `create` / `destroy` | ● | ● | ● | ● | ● | ● | ● | ● |
+| `build` | | | | | | | | ● |
+
+### State Query
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `size` | ● | ● | ● | ● | SkipList | ● | ● |
+| `capacity` | ● | | ● | ● | | ● | |
+| `is_empty` | ● | ● | ● | ● | ● | ● | ● |
+| `height` | | | | | AVL,RB | | |
+| `count` | | | | | AVL,RB | | |
+| `level` | | | | | SkipList | | ● |
+
+### Insert
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `push_back` | ● | ● | Deque | | | | |
+| `push_front` | Deque | ● | Deque | | | | |
+| `push` | | | Stack | | | ● | |
+| `enqueue` | | | Queue | | | | |
+| `insert` | ● | ● | Deque | ● | ● | | ● |
+
+### Delete
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `pop_back` / `_and_destroy` | ● | ● | Deque | | | | |
+| `pop_front` / `_and_destroy` | Deque | ● | Deque | | | | |
+| `pop` / `_and_destroy` | | | Stack | | | ● | |
+| `dequeue` / `_and_destroy` | | | Queue | | | | |
+| `erase` / `_and_destroy` | ● | ● | Deque | ● | | | |
+| `delete` | | | | | ● | | ● |
+
+### Access
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `get` | ● | ● | Deque | | | | |
+| `set` | ● | ● | Deque | | | | |
+| `peek` | | | Stack | | | ● | |
+| `peek_front` / `peek_back` | | | Queue,Deque | | | | |
+| `node_get_data` | | ● | | | ● | | ● |
+
+### Lookup
+
+| Suffix | Seq-Contiguous | Seq-Linked | Assoc-Hash | Assoc-Tree | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|
+| `find` | ● | ● | ● | | |
+| `search` | | ● | | ● | ● |
+| `find_min` / `find_max` | | | | ● | ● |
+| `successor` / `predecessor` | | | | ● | ● |
+
+### Traversal
+
+| Suffix | Seq-Contiguous | Seq-Linked | Assoc-Hash | Assoc-Tree | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|
+| `traverse` | ● | ● | ● | SkipList | ● |
+| `begin` / `next` | | ● | | ● | ● |
+| `prev` / `rbegin` | | DoubleLL | | AVL,RB | |
+| `_preorder` / `_inorder` / `_postorder` / `_levelorder` | | | | AVL,RB | |
+| `range_query` | | | | ● | ● |
+
+### Capacity Management
+
+| Suffix | Seq-Contiguous | Seq-Restricted | Assoc-Hash | Heap |
+|------|:--:|:--:|:--:|:--:|
+| `reserve` | ● | ● | ● | ● |
+| `shrink_to_fit` | ● | ● | | ● |
+
+### Clone & Concat
+
+| Suffix | Seq-Contiguous | Seq-Linked | Seq-Restricted | Assoc-Hash | Assoc-Tree | Heap | Persistent |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| `clone` | ● | ● | ● | ● | ● | ● | ● |
+| `concat` | ● | ● | | | | | |
+
+### Cursor Variants (Seq-Linked Only)
+
+| Suffix | Covers | Applies To |
+|------|---------|:--:|
+| `_after_cursor` / `_and_destroy` | insert / erase | ● |
+| `_before_cursor` / `_and_destroy` | insert / erase | DoubleLinkedList |
+| `_cursor` / `_and_destroy` | erase | DoubleLinkedList |
+
+### Specialized Operations
+
+| Suffix | Applies To | Notes |
+|------|------|------|
+| `put` | HashTable | Insert or overwrite (overwrites when key exists, inserts otherwise) |
+| `compare` | String | Lexicographic comparison |
+| `substring` | String | Extract substring |
+| `cstr_to_string` / `string_to_cstr` | String | C string interop |
+| `encode` / `decode` | HuffmanCoding | Compression and decompression |
 
 ---
 
 ## Advanced Features
 
-### Cursor-Based Iteration (Trees & Linked Lists)
+### Cursor Iteration (Trees & Linked Lists)
 
-Trees and linked lists provide opaque cursor types, avoiding index-based overhead:
+Trees and linked lists provide opaque cursor types, avoiding the traversal overhead of index-based access:
 
 ```c
 AVLTreeNode *cursor = ds_avltree_find_min(tree);
 while (cursor != NULL) {
     DS_AVLTREE_TYPE *data;
     ds_avltree_node_get_data(cursor, &data);
-    printf("key=%d\n", data->key);
-    cursor = ds_avltree_successor(tree, cursor);
+    printf("key = %d\n", data->key);
+    cursor = ds_avltree_successor(cursor);
 }
 ```
 
 ### Traversal Callbacks
 
+Tree containers support preorder, inorder, postorder, and level-order traversal. Linked lists and hash tables support forward traversal:
+
 ```c
 void print_value(DS_AVLTREE_TYPE *value, void *user_data) {
     (void)user_data;
-    printf("key=%d, value=%d\n", value->key, value->value);
+    printf("key = %d, value = %d\n", value->key, value->value);
 }
 ds_avltree_traverse_inorder_value(tree, NULL, print_value);
 ```
-
-Supported traversal orders: preorder, inorder, postorder, level-order.
 
 ### Range Queries (Trees)
 
 ```c
 ds_avltree_range_query(tree,
-    (DS_AVLTREE_TYPE){.key = 30},
-    (DS_AVLTREE_TYPE){.key = 70},
+    (DS_AVLTREE_TYPE){ .key = 30 },
+    (DS_AVLTREE_TYPE){ .key = 70 },
     NULL, visit_callback);
 ```
 
-### Capacity Management (Array-Based)
+### insert vs. put (HashTable)
 
 ```c
-ds_dynamicarray_reserve(array, 1000);   // pre-allocate to avoid repeated reallocs
-ds_dynamicarray_shrink_to_fit(array);   // free excess capacity
+ds_hashtable_insert(ht, value);   // rejects if key exists, returns 0
+ds_hashtable_put(ht, value);      // overwrites if key exists, inserts otherwise
 ```
 
-### Insert vs Put (HashTable)
+### Nested Containers (test_project)
+
+The `test_project/` directory demonstrates composing two data structures: a `DynamicArray` whose elements contain a `DS_String *` field, building a student grade management example.
 
 ```c
-ds_hashtable_insert(ht, value);  // fails if key already exists (returns 0)
-ds_hashtable_put(ht, value);     // overwrites if key exists, inserts otherwise
+DS_DynamicArray *roster = ds_dynamicarray_create();
+
+DS_String *name1 = ds_cstr_to_string("Alice");
+ds_dynamicarray_push_back(roster,
+    (DS_DYNAMICARRAY_TYPE){ .name = name1, .id = 2025001, .score = 95 });
+
+DS_String *name2 = ds_cstr_to_string("Bob");
+ds_dynamicarray_push_back(roster,
+    (DS_DYNAMICARRAY_TYPE){ .name = name2, .id = 2025002, .score = 87 });
+
+ds_dynamicarray_destroy(roster);   // recursively destroys nested DS_Strings
 ```
+
+It demonstrates how `DESTROY_ELEMENT` / `CLONE_ELEMENT` macros should call `ds_string_destroy` / `ds_string_clone` to correctly handle nested container lifecycles.
 
 ---
 
-## Two Container Families, Two Erase Conventions
+## Project Structure Guide
 
-This library's containers fall into two categories with different `erase` / `pop` lifetime semantics:
-
-### Array-Based — DynamicArray, Deque, Stack, Queue
-
-Data lives in contiguous memory. `erase` returns a pointer **directly into that memory** — not a separate heap block. The next `push` / `insert` overwrites that slot, invalidating the pointer.
-
-```c
-DS_DYNAMICARRAY_TYPE *data;
-ds_dynamicarray_erase(da, 0, &data);
-
-DS_DYNAMICARRAY_DESTROY_ELEMENT(*data);  // free heap members (if any)
-// Do NOT free(data) — it points into the container
+```
+C-DataStructure/
+│
+├── DynamicArray/                ← Start here
+│   ├── ds_dynamicarray_type.h   ← User-editable element type
+│   ├── ds_dynamicarray.h        ← Public API
+│   ├── ds_dynamicarray.c        ← Implementation
+│   ├── main.c                   ← Demo
+│   └── generate.py              ← Multi-type code generator
+│
+├── SinglyLinkedList/            ← Then linked lists & cursors
+├── DoubleLinkedList/
+├── Stack/
+├── Queue/
+├── Deque/
+├── PriorityQueue/               ← Two independent implementations: generate_max.py / generate_min.py
+│
+├── HashTable/
+├── AVLTree/                     ← Self-balancing trees
+├── RedBlackTree/
+├── SkipList/
+├── BPlusTree/                   ← Disk-backed, the largest module
+├── String/
+│
+├── Algorithms/
+│   └── HuffmanCoding/
+│
+└── test_project/                ← Integration demo
 ```
 
-### Node-Based — SinglyLinkedList, DoubleLinkedList, HashTable
+### Recommended Learning Order
 
-Data lives in separately allocated nodes. `erase` **shallow-copies the node's data into a new `malloc`'d block**, frees the node, and returns the new block. **You are responsible for `free(data)`.**
-
-```c
-DS_HASHTABLE_TYPE *data;
-ds_hashtable_erase(ht, 100, &data);
-
-DS_HASHTABLE_DESTROY_ELEMENT(*data);  // free heap members (if any)
-free(data);                           // Must free — it was malloc'd for you
-```
-
-### `_and_destroy` Variants
-
-For automatic cleanup, use the `_and_destroy` variants — the container handles **DESTROY_ELEMENT + free** (node-based) for you:
-
-```c
-// Array-based automatic cleanup
-ds_dynamicarray_pop_back_and_destroy(array);
-
-// Node-based automatic cleanup
-ds_hashtable_erase_and_destroy(ht, 100);
-```
-
-### Disk-Based — BPlusTree
-
-B+Tree key/value pairs are moved between disk pages and memory via `fread`/`fwrite` — no CLONE/DESTROY macros involved. `delete` removes data directly from the disk page; no manual memory management is needed. Cursors (`BPlusTreeNode *`) are heap-allocated copies and must be `free(cursor)` after use.
+| Stage | Module | Goal |
+|------|------|------|
+| 1 | **DynamicArray** | Dynamic arrays, doubling growth, macro generics fundamentals |
+| 2 | **String** | How the same dynamic array mechanism simplifies when the type is fixed (`char`), yielding a clean API with string-specific operations |
+| 3 | **SinglyLinkedList** → **DoubleLinkedList** | Pointer structures, opaque cursors, callback traversal |
+| 4 | **Stack** → **Queue** → **Deque** | Restricted interfaces, circular buffers |
+| 5 | **PriorityQueue** | Binary heaps, sift-up / sift-down |
+| 6 | **HashTable** | Separate chaining, FNV-1a, rehashing |
+| 7 | **AVLTree** → **RedBlackTree** | Self-balancing BSTs, rotations and recoloring |
+| 8 | **SkipList** | Probabilistic data structures |
+| 9 | **BPlusTree** | Disk page format, split & merge, free list |
+| 10 | **HuffmanCoding** | Composing data structures to build an algorithm — min-heap tree building, bit-level encoding |
+| 11 | **test_project** | Multi-container composition, cascading ownership, real project structure |
 
 ---
 
-## Capacity Growth
+## Implementation & Design Considerations
 
-All array-based containers use a **doubling growth strategy**: initial capacity 0 → 1 on first insert → doubles each time thereafter. HashTable triggers rehashing when `size >= capacity` (load factor = 1.0), doubling the bucket count.
+### Portable Macros
 
----
-
-## Design Trade-offs
-
-- **No `void*` erasure.** Generics via macros in `_type.h`. Compile-time type safety, but macros are naturally limited to one type registration per compilation unit — the `generate.py` code generator solves this through identifier renaming, enabling multiple type instantiations without sacrificing type safety.
-- **No error codes beyond return values.** No `errno`, `assert`, or `exit`. All errors reported through return values — no hidden control flow.
-- **Single-threaded.** No locking or atomic operations. Assumes a single-threaded environment.
-- **No build system.** Each data structure is a standalone set of `.c`/`.h` files — no Makefile or CMake required.
-- **Opaque structs.** Internal fields hidden from users. Every operation is a direct function call — no vtable overhead.
-
----
-
-## Writing Portable Macros
-
-The `_type.h` files use **`static inline` functions** for clone and destroy logic, invoked via macros. This pattern is compatible with all C99 compilers (GCC, Clang, MSVC) and supports step-through debugging.
-
-The default element types contain only scalar fields (int, etc.) and work out of the box. When adding heap-allocated fields, simply edit the struct definition in `_type.h`, write your own clone / destroy functions, and update the macros.
+`ds_xxx_type.h` uses `static inline` functions for clone and destroy logic, invoked by macros. This pattern is compatible with all C99 compilers (GCC, Clang, MSVC) and supports step-through debugging.
 
 Key points:
 
-- **`static`** avoids duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
+- **`static`** prevents duplicate-symbol errors when `_type.h` is included by multiple `.c` files.
 - **`inline`** lets the compiler eliminate call overhead.
-- The macro **call syntax stays the same** — all `.c` / `.h` files remain untouched.
-- Core invariant: **`_type.h` is the only file you ever need to modify.** (When using the code generator, you still only edit the mother `_type.h`, then run the script — the mother file remains the only C file you touch.)
-- **Exception — disk-based containers:** B+Tree uses fixed-size POD key/value types read from and written to disk pages via `fread`/`fwrite`. CLONE/DESTROY macros are not used.
+- Macro call syntax remains unchanged — all `.c` / `.h` implementation files stay untouched when you modify `_type.h`.
+- Core invariant: **`_type.h` is the only file you ever need to modify.** (When using the code generator, you still only edit the mother `_type.h`, then run the script.)
+- Exception — disk-backed containers: B+ tree key/value types are fixed-size POD, read from and written to disk pages via `fread` / `fwrite`. CLONE/DESTROY macros are not used.
 
----
+### Capacity Growth
 
-## test_project
+All array-based containers use a doubling growth strategy: initial capacity 0 → 1 on first insert → doubles each time thereafter. HashTable triggers a rehash when `size >= capacity` (load factor 1.0), doubling the bucket count.
 
-The `test_project/` directory demonstrates composing two data structures: `DynamicArray` storing `String` elements to build a student grade management system:
+### Design Trade-offs
 
-```c
-// test_project/main.c — excerpt
-DS_DynamicArray *roster = ds_dynamicarray_create();
-
-// Add a student: String for name, int for grade
-DS_String *name1 = ds_cstr_to_string("Alice");
-ds_dynamicarray_push_back(roster, (DS_DYNAMICARRAY_TYPE){.name = name1, .grade = 95});
-
-DS_String *name2 = ds_cstr_to_string("Bob");
-ds_dynamicarray_push_back(roster, (DS_DYNAMICARRAY_TYPE){.name = name2, .grade = 87});
-
-// Look up a student
-DS_DYNAMICARRAY_TYPE *entry;
-if (ds_dynamicarray_find(roster, "Alice", &entry)) {
-    printf("%s: %d\n", ds_string_to_cstr(entry->name), entry->grade);
-}
-
-ds_dynamicarray_destroy(roster);  // recursively destroys nested Strings
-```
-
-It demonstrates how `DESTROY_ELEMENT` and `CLONE_ELEMENT` macros should handle nested container lifecycles — when your `DynamicArray` element contains a `DS_String *`, the macros must call `ds_string_destroy` and `ds_string_clone` respectively.
+- **No `void*` erasure.** Generics via macros in `_type.h`. Compile-time type safety. The inherent limitation of macros (one type per compilation unit) is solved by the `generate.py` code generator.
+- **Return values are the only error channel.** No `errno`, `assert`, or `exit`. All errors are reported through return values — no hidden control flow.
+- **Single-threaded.** No locks, no atomic operations. Assumes a single-threaded environment.
+- **No build system.** Each data structure is a standalone set of `.c` / `.h` files — no Makefile or CMake required.
+- **Opaque structs.** Internal fields are hidden from users. All operations are direct function calls — no vtable overhead.
 
 ---
 
 ## Comparison with Alternatives
 
-| Approach | Type Safety | Memory Safety | Learning Curve | When to Use |
-|---|---|---|---|---|
-| **This library** | Compile-time (macros) | Deep-copy ownership model | Medium (learn the macro system; one Python script run for multi-type) | You want readable, reusable generic containers |
-| Hand-rolled structs | Compile-time | Manual (you own it) | Low to start, high to get right | One-off, simple cases |
-| `void*` + function pointers | None (runtime casts) | Error-prone ("who frees what?") | Low | Quick internal prototyping |
-| C++ STL | Compile-time (templates) | RAII | Low (if you know C++) | You can use a C++ compiler |
-| `klib` / `uthash` | Macros (header-only) | Varies | Medium | Minimalist, header-only needs |
+| Approach | Type Safety | Ownership Clarity | Learning Curve | Use Case |
+|------|:--:|:--:|:--:|------|
+| **This library** | Compile-time (macros) | Deep-copy model, clear boundaries | Medium | Learn data structures & C generics design; small projects can adopt |
+| `C++ STL` | Compile-time (templates) | RAII | Low (if you know C++) | Projects that can use a C++ compiler |
+| `glib` / `libuv` etc. | None (void* + casts) | Error-prone ("who frees?" has no standard answer) | Low | Quick internal prototypes |
+| `klib` / `uthash` | Macros (header-only) | Varies by library, no uniform convention | Medium | Minimalist, header-only needs, don't mind macro debugging |
+| Hand-rolled structs | Compile-time | Manual management | Low to start, hard to get right | One-off, simple cases |
 
-**In short:** This library is for you if you're writing C, want type-safe generic containers, care about clear ownership semantics, and are willing to configure a `_type.h` file per data structure.
+**In short:** This library is for you if you write C, want to understand generic container and data structure design through readable source code, care about clear ownership semantics, and are willing to configure a `_type.h` file per container.
 
 ---
 
 ## License
 
 This project is released under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+*If you want to dive deeper after reading this README, every module's `_type.h` and `.h` files are the best entry points — the former contains type customization examples, the latter contains detailed function-level documentation and ownership semantics.*
