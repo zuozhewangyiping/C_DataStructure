@@ -574,7 +574,7 @@ ds_dynamicarray_destroy(roster);   // 递归销毁嵌套的 DS_String
 ## 项目结构导读
 
 ```
-C-DataStructure/
+C_DataStructure/
 │
 ├── DynamicArray/                ← 建议从这里开始
 │   ├── ds_dynamicarray_type.h   ← 用户可编辑的元素类型

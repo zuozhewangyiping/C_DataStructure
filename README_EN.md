@@ -578,7 +578,7 @@ It demonstrates how `DESTROY_ELEMENT` / `CLONE_ELEMENT` macros should call `ds_s
 ## Project Structure Guide
 
 ```
-C-DataStructure/
+C_DataStructure/
 │
 ├── DynamicArray/                ← Start here
 │   ├── ds_dynamicarray_type.h   ← User-editable element type
