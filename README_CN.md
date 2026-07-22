@@ -582,6 +582,7 @@ C_DataStructure/
 │   ├── ds_dynamicarray.c        ← 实现
 │   ├── main.c                   ← 演示
 │   └── generate.py              ← 多类型代码生成器
+├── String/
 │
 ├── SinglyLinkedList/            ← 然后链表与游标
 ├── DoubleLinkedList/
@@ -595,7 +596,6 @@ C_DataStructure/
 ├── RedBlackTree/
 ├── SkipList/
 ├── BPlusTree/                   ← 磁盘存储，最大的模块
-├── String/
 │
 ├── Algorithms/
 │   └── HuffmanCoding/

@@ -586,6 +586,7 @@ C_DataStructure/
 │   ├── ds_dynamicarray.c        ← Implementation
 │   ├── main.c                   ← Demo
 │   └── generate.py              ← Multi-type code generator
+├── String/
 │
 ├── SinglyLinkedList/            ← Then linked lists & cursors
 ├── DoubleLinkedList/
@@ -599,7 +600,6 @@ C_DataStructure/
 ├── RedBlackTree/
 ├── SkipList/
 ├── BPlusTree/                   ← Disk-backed, the largest module
-├── String/
 │
 ├── Algorithms/
 │   └── HuffmanCoding/
