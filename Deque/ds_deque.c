@@ -178,26 +178,7 @@ static int capacity_expansion(DS_Deque *dq)
         new_capacity = 2 * dq->capacity;
     }
 
-    DS_DEQUE_TYPE *temp = (DS_DEQUE_TYPE *)malloc(new_capacity * sizeof(DS_DEQUE_TYPE));
-    if (temp == NULL)
-    {
-        return 0;
-    }
-
-    int i;
-    for (i = 0; i < dq->size; i++)
-    {
-        temp[i] = dq->data[(dq->front + i) % dq->capacity];
-    }
-
-    free(dq->data);
-
-    dq->data = temp;
-    dq->front = 0;
-    dq->rear = dq->size;
-    dq->capacity = new_capacity;
-
-    return 1;
+    return ds_deque_reserve(dq, new_capacity);
 }
 
 int ds_deque_push_front(DS_Deque *dq, DS_DEQUE_TYPE value)
@@ -501,7 +482,14 @@ DS_Deque *ds_deque_clone(const DS_Deque *dq, int *judge)
     }
 
     new_dq->front = 0;
-    new_dq->rear = new_dq->size;
+    if (new_dq->size == new_dq->capacity)
+    {
+        new_dq->rear = 0;
+    }
+    else
+    {
+        new_dq->rear = new_dq->size;
+    }
 
     return new_dq;
 }
@@ -553,7 +541,14 @@ int ds_deque_reserve(DS_Deque *dq, int new_capacity)
     dq->data = new_data;
     dq->capacity = new_capacity;
     dq->front = 0;
-    dq->rear = dq->size;
+    if (dq->size == new_capacity)
+    {
+        dq->rear = 0;
+    }
+    else
+    {
+        dq->rear = dq->size;
+    }
 
     return 1;
 }
