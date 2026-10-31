@@ -262,7 +262,14 @@ DS_Queue *ds_queue_clone(const DS_Queue *q, int *judge)
     }
 
     new_q->front = 0;
-    new_q->rear = new_q->size;
+    if (new_q->size == new_q->capacity)
+    {
+        new_q->rear = 0;
+    }
+    else
+    {
+        new_q->rear = new_q->size;
+    }
 
     return new_q;
 }
@@ -314,7 +321,14 @@ int ds_queue_reserve(DS_Queue *q, int new_capacity)
     q->data = new_data;
     q->capacity = new_capacity;
     q->front = 0;
-    q->rear = q->size;
+    if (q->size == q->capacity)
+    {
+        q->rear = 0;
+    }
+    else
+    {
+        q->rear = q->size;
+    }
 
     return 1;
 }
